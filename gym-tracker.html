@@ -50,7 +50,6 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    flex: 1;
   }
 
   .nav-arrow {
@@ -87,4 +86,498 @@
   }
 
   .progress-pill {
-    background: var(--surface
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  .progress-bar-wrap {
+    margin-top: 12px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .exercises { 
+    flex: 1; 
+    padding: 16px 16px 0; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+  }
+
+  .ex-item {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .ex-item:active { transform: scale(0.98); opacity: 0.85; }
+
+  .ex-item.done {
+    background: var(--done-bg);
+    border-color: var(--done-border);
+  }
+
+  .check-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .ex-item.done .check-circle {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .checkmark {
+    width: 10px;
+    height: 7px;
+    border-left: 2px solid #0e0e0e;
+    border-bottom: 2px solid #0e0e0e;
+    transform: rotate(-45deg) translateY(-1px);
+    opacity: 0;
+  }
+
+  .ex-item.done .checkmark { opacity: 1; }
+
+  .ex-info { flex: 1; }
+
+  .ex-name {
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+  }
+
+  .ex-item.done .ex-name { color: var(--muted); text-decoration: line-through; }
+
+  .ex-sets {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .ex-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    background: #c8f06015;
+    color: #8ab040;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+
+  .ex-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: var(--muted);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  .action-btn.remove { color: #f06060; border-color: #3a1a1a; }
+
+  .add-ex-btn {
+    margin: 16px;
+    padding: 16px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .add-ex-btn:active { opacity: 0.8; }
+
+  /* Add Exercise Modal */
+  .modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: flex-end;
+    z-index: 100;
+  }
+
+  .modal-content {
+    background: var(--surface);
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .modal-title { font-size: 18px; font-weight: 600; }
+
+  .exercise-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .exercise-option {
+    padding: 14px 16px;
+    background: var(--bg);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 15px;
+  }
+
+  .exercise-option:active { background: var(--accent-dim); }
+
+  .rest-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    text-align: center;
+  }
+
+  .rest-icon { font-size: 56px; margin-bottom: 16px; }
+
+  .rest-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--muted); }
+
+  .rest-sub { font-size: 14px; color: #444; line-height: 1.6; }
+
+  .bottom-nav {
+    display: flex;
+    padding: 12px 16px;
+    border-top: 0.5px solid var(--border);
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .nav-btn:active { opacity: 0.7; transform: scale(0.97); }
+  .nav-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<!-- Add Exercise Modal -->
+<div class="modal" id="addModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Add Exercise</div>
+      <div onclick="closeModal()" style="font-size:24px;cursor:pointer;">×</div>
+    </div>
+    <div class="exercise-list" id="exerciseList"></div>
+  </div>
+</div>
+
+<script>
+// ================== DATA ==================
+const BASE_ROUTINE = {
+  0: { name: 'Sunday', exercises: [
+    { id: 'sun1', name: 'Lat raise + uprise', sets: '4 sets' },
+    { id: 'sun2', name: 'Bent over row', sets: '4 sets' },
+    { id: 'sun3', name: 'Bicep', sets: '6+ sets' },
+    { id: 'sun4', name: 'Calf raise', sets: '4 sets' },
+  ]},
+  1: { name: 'Monday', exercises: [
+    { id: 'mon1', name: 'Bench flat', sets: '4 sets' },
+    { id: 'mon2', name: 'Pull up', sets: '4 sets' },
+    { id: 'mon3', name: 'Cable Y-raise', sets: '4 sets', tag: 'posture' },
+    { id: 'mon4', name: 'Tricep', sets: '4 sets' },
+  ]},
+  2: { name: 'Tuesday', rest: true },
+  3: { name: 'Wednesday', exercises: [
+    { id: 'wed1', name: 'Chest fly', sets: '4 sets' },
+    { id: 'wed2', name: 'Lat raise', sets: '4 sets' },
+    { id: 'wed3', name: 'Leg press / squat', sets: '4 sets' },
+    { id: 'wed4', name: 'Romanian deadlift', sets: '4 sets', tag: 'posture' },
+  ]},
+  4: { name: 'Thursday', rest: true },
+  5: { name: 'Friday', exercises: [
+    { id: 'fri1', name: 'Bench flat', sets: '4 sets' },
+    { id: 'fri2', name: 'Pull up', sets: '4 sets' },
+    { id: 'fri3', name: 'Shoulder press', sets: '3 sets' },
+    { id: 'fri4', name: 'Hip thrust', sets: '4 sets', tag: 'posture' },
+    { id: 'fri5', name: 'Tricep', sets: '3 sets' },
+  ]},
+  6: { name: 'Saturday', exercises: [
+    { id: 'sat1', name: 'Dead hang', sets: 'decompression', tag: 'posture' },
+    { id: 'sat2', name: 'DB deadlift', sets: '4 sets' },
+    { id: 'sat3', name: 'Zone 2 cardio', sets: '40 min' },
+    { id: 'sat4', name: 'Hanging leg raise', sets: '4 sets · pelvic tuck', tag: 'posture' },
+  ]},
+};
+
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Collect all unique exercises for the "Add" picker
+let ALL_EXERCISES = [];
+function buildAllExercises() {
+  const set = new Map();
+  Object.values(BASE_ROUTINE).forEach(day => {
+    if (day.exercises) {
+      day.exercises.forEach(ex => {
+        if (!set.has(ex.name)) {
+          set.set(ex.name, {name: ex.name, sets: ex.sets, tag: ex.tag || ''});
+        }
+      });
+    }
+  });
+  ALL_EXERCISES = Array.from(set.values());
+}
+
+// ================== STATE ==================
+function getTodayKey() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function loadState() {
+  try {
+    return JSON.parse(localStorage.getItem('gymState') || '{}');
+  } catch(e) { return {}; }
+}
+
+function saveState(state) {
+  localStorage.setItem('gymState', JSON.stringify(state));
+}
+
+let currentDate = new Date();
+let currentView = 'today';
+
+function getDateKey(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function toggleExercise(dateKey, exId) {
+  const state = loadState();
+  if (!state[dateKey]) state[dateKey] = {exercises: [], completed: {}};
+  
+  if (!state[dateKey].completed) state[dateKey].completed = {};
+  state[dateKey].completed[exId] = !state[dateKey].completed[exId];
+  
+  saveState(state);
+  render();
+}
+
+function addExerciseToDay(exName, sets, tag = '') {
+  const dateKey = getDateKey(currentDate);
+  const state = loadState();
+  
+  if (!state[dateKey]) state[dateKey] = {exercises: [], completed: {}};
+  
+  const newId = 'custom_' + Date.now();
+  state[dateKey].exercises.push({
+    id: newId,
+    name: exName,
+    sets: sets,
+    tag: tag
+  });
+  
+  saveState(state);
+  closeModal();
+  render();
+}
+
+function removeExerciseFromDay(exId) {
+  if (!confirm('Remove this exercise from today?')) return;
+  
+  const dateKey = getDateKey(currentDate);
+  const state = loadState();
+  
+  if (state[dateKey] && state[dateKey].exercises) {
+    state[dateKey].exercises = state[dateKey].exercises.filter(e => e.id !== exId);
+    if (state[dateKey].completed) delete state[dateKey].completed[exId];
+  }
+  
+  saveState(state);
+  render();
+}
+
+// ================== RENDERING ==================
+function render() {
+  const app = document.getElementById('app');
+  const dateKey = getDateKey(currentDate);
+  const state = loadState();
+  const dayState = state[dateKey] || {exercises: [], completed: {}};
+  
+  const dow = currentDate.getDay();
+  const baseDay = BASE_ROUTINE[dow];
+  const isRest = baseDay?.rest || false;
+
+  // Merge base + custom exercises for this day
+  let exercises = [];
+  if (!isRest) {
+    if (baseDay && baseDay.exercises) exercises = [...baseDay.exercises];
+    if (dayState.exercises) exercises = [...exercises, ...dayState.exercises];
+  }
+
+  const doneCount = exercises.filter(e => dayState.completed?.[e.id]).length;
+  const pct = exercises.length ? Math.round((doneCount / exercises.length) * 100) : 0;
+
+  let content = '';
+
+  // Header with navigation
+  const dateStr = `${DAYS[dow]}, ${MONTHS[currentDate.getMonth()]} ${currentDate.getDate()}`;
+  const isToday = dateKey === getTodayKey();
+
+  content += `
+    <header>
+      <div class="header-top">
+        <div class="day-nav">
+          <div class="nav-arrow" onclick="prevDay()">‹</div>
+          <div class="day-name${isRest ? ' rest' : ''}">${baseDay ? baseDay.name : DAYS[dow]}</div>
+          <div class="nav-arrow" onclick="nextDay()">›</div>
+        </div>
+        ${!isRest ? `<div class="progress-pill">${doneCount}/${exercises.length}</div>` : ''}
+      </div>
+      <div class="date-str">${dateStr} ${isToday ? '· Today' : ''}</div>
+      ${!isRest ? `<div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>` : ''}
+    </header>`;
+
+  if (currentView === 'today') {
+    if (isRest) {
+      content += `
+        <div class="rest-screen">
+          <div class="rest-icon">🛋️</div>
+          <div class="rest-title">Rest day</div>
+          <div class="rest-sub">Recovery is part of the programme.<br>Check your stretch routine tonight.</div>
+        </div>`;
+    } else {
+      content += `<div class="exercises">`;
+      
+      exercises.forEach(ex => {
+        const done = !!dayState.completed?.[ex.id];
+        const isCustom = ex.id.startsWith('custom_');
+        
+        content += `
+          <div class="ex-item${done ? ' done' : ''}" onclick="toggleExercise('${dateKey}','${ex.id}')">
+            <div class="check-circle"><div class="checkmark"></div></div>
+            <div class="ex-info">
+              <div class="ex-name">${ex.name}</div>
+              <div class="ex-sets">${ex.sets}</div>
+            </div>
+            ${ex.tag === 'posture' ? `<div class="ex-tag">posture</div>` : ''}
+            <div class="ex-actions">
+              ${isCustom ? `<div class="action-btn remove" onclick="event.stopImmediatePropagation(); removeExerciseFromDay('${ex.id}')">–</div>` : ''}
+            </div>
+          </div>`;
+      });
+
+      content += `</div>`;
+      
+      // Add button
+      content += `
+        <div class="add-ex-btn" onclick="showAddModal()">
+          + Add Exercise
+        </div>`;
+    }
+  }
+
+  // Bottom nav (simplified for now - you can expand later)
+  content += `
+    <div class="bottom-nav">
+      <div class="nav-btn active">Today</div>
+    </div>`;
+
+  app.innerHTML = content;
+}
+
+function prevDay() {
+  currentDate.setDate(currentDate.getDate() - 1);
+  render();
+}
+
+function nextDay() {
+  currentDate.setDate(currentDate.getDate() + 1);
+  render();
+}
+
+// Modal functions
+function showAddModal() {
+  const list = document.getElementById('exerciseList');
+  list.innerHTML = '';
+  
+  ALL_EXERCISES.forEach(ex => {
+    const div = document.createElement('div');
+    div.className = 'exercise-option';
+    div.textContent = ex.name;
+    div.onclick = () => addExerciseToDay(ex.name, ex.sets, ex.tag);
+    list.appendChild(div);
+  });
+  
+  document.getElementById('addModal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+// ================== INIT ==================
+buildAllExercises();
+render();
+</script>
+</body>
+</html>
