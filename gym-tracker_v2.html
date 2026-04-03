@@ -507,7 +507,16 @@ let view = 'workout';
 let addModalOpen = false;
 let openStretchInfoId = null;
 
-function dk(d){ return d.toISOString().split('T')[0]; }
+function dk(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fromDayKey(dayKey){
+  const [y,m,d] = dayKey.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 function ws(d,o){ const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate()-start.getDay()+(o*7)); return start; }
 function esc(text){ return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
@@ -643,7 +652,7 @@ function addExercise(libraryId){
   addModalOpen = false;
   render();
 }
-function setDay(dateStr){ selDate = new Date(dateStr); selDate.setHours(0,0,0,0); openStretchInfoId = null; render(); }
+function setDay(dateStr){ selDate = fromDayKey(dateStr); selDate.setHours(0,0,0,0); openStretchInfoId = null; render(); }
 function setWeekOff(offset){
   weekOff = offset;
   const weekStart = ws(new Date(),offset);
