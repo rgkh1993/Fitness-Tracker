@@ -207,6 +207,7 @@ header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
   opacity:0;
 }
 .ex-item.done .checkmark { opacity:1; }
+.swipe-remove { transition:transform 0.18s ease; touch-action:pan-y; }
 .ex-main { flex:1; min-width:0; }
 .ex-name { font-size:15px; font-weight:600; letter-spacing:-0.2px; color:var(--text); }
 .ex-meta {
@@ -277,8 +278,26 @@ header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
   padding:10px;
   min-width:0;
 }
+.stretch-tile.done { border-color:var(--done-border); background:rgba(24,35,11,0.7); }
 .stretch-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.stretch-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .stretch-name { font-size:12px; font-weight:600; line-height:1.35; color:var(--text); }
+.stretch-name.done { color:var(--accent); }
+.stretch-check-btn {
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:0.5px solid var(--done-border);
+  background:#121a0a;
+  color:#7ea536;
+  font-size:11px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.stretch-check-btn.done { background:var(--accent); color:#0e0e0e; border-color:var(--accent); }
 .stretch-info-btn {
   width:18px;
   height:18px;
@@ -492,19 +511,22 @@ function dk(d){ return d.toISOString().split('T')[0]; }
 function ws(d,o){ const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate()-start.getDay()+(o*7)); return start; }
 function esc(text){ return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-function newState(){ return { checks:{}, added:{} }; }
+function newState(){ return { checks:{}, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{} }; }
 function normalizedState(raw){
   if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return newState();
 
-  if(raw.checks || raw.added){
+  if(raw.checks || raw.added || raw.removed || raw.stretchChecks || raw.stretchRemoved){
     return {
       checks: raw.checks && typeof raw.checks === 'object' ? raw.checks : {},
       added: raw.added && typeof raw.added === 'object' ? raw.added : {},
+      removed: raw.removed && typeof raw.removed === 'object' ? raw.removed : {},
+      stretchChecks: raw.stretchChecks && typeof raw.stretchChecks === 'object' ? raw.stretchChecks : {},
+      stretchRemoved: raw.stretchRemoved && typeof raw.stretchRemoved === 'object' ? raw.stretchRemoved : {},
     };
   }
 
   // Legacy format: {dateKey:{exerciseId:boolean}}
-  return { checks: raw, added:{} };
+  return { checks: raw, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{} };
 }
 function ls(){
   try {
@@ -521,11 +543,21 @@ function ensureList(obj,key){ if(!Array.isArray(obj[key])) obj[key] = []; return
 
 function getVisibleExercises(date,state){
   const dkey = dk(date);
-  const base = (ROUTINE[date.getDay()].exercises || []).map(ex => ({ ...ex, instanceId: ex.id, builtIn: true }));
-  const added = (state.added[dkey] || []).map(ex => ({ ...ex, builtIn: false }));
+  const removed = new Set(state.removed[dkey] || []);
+  const base = (ROUTINE[date.getDay()].exercises || [])
+    .filter(ex => !removed.has(ex.id))
+    .map(ex => ({ ...ex, instanceId: ex.id, builtIn: true }));
+  const added = (state.added[dkey] || [])
+    .filter(ex => !removed.has(ex.instanceId))
+    .map(ex => ({ ...ex, builtIn: false }));
   return [...base, ...added];
 }
 function getDayChecks(state,date){ return state.checks[dk(date)] || {}; }
+function getVisibleStretches(date,state){
+  const removed = new Set(state.stretchRemoved[dk(date)] || []);
+  return STRETCH.filter(item => !removed.has(item.id));
+}
+function getStretchChecks(state,date){ return state.stretchChecks[dk(date)] || {}; }
 
 function getExerciseLibrary(date,state){
   const currentDayIndex = date.getDay();
@@ -560,10 +592,37 @@ function toggleEx(dkey,instanceId){
 function removeExercise(instanceId){
   const state = ls();
   const dkey = dk(selDate);
+  const visible = getVisibleExercises(selDate,state);
+  const target = visible.find(item => item.instanceId === instanceId);
+  if(!target) return;
+
   const added = ensureList(state.added,dkey);
-  const nextAdded = added.filter(item => item.instanceId !== instanceId);
-  state.added[dkey] = nextAdded;
+  if(target.builtIn) {
+    const removed = ensureList(state.removed,dkey);
+    if(!removed.includes(instanceId)) removed.push(instanceId);
+  } else {
+    const nextAdded = added.filter(item => item.instanceId !== instanceId);
+    state.added[dkey] = nextAdded;
+  }
+
   if(state.checks[dkey]) delete state.checks[dkey][instanceId];
+  ss(state);
+  render();
+}
+function removeStretch(stretchId){
+  const state = ls();
+  const dkey = dk(selDate);
+  const removed = ensureList(state.stretchRemoved,dkey);
+  if(!removed.includes(stretchId)) removed.push(stretchId);
+  if(state.stretchChecks[dkey]) delete state.stretchChecks[dkey][stretchId];
+  ss(state);
+  render();
+}
+function toggleStretchComplete(stretchId){
+  const state = ls();
+  const dkey = dk(selDate);
+  const checks = ensureMap(state.stretchChecks,dkey);
+  checks[stretchId] = !checks[stretchId];
   ss(state);
   render();
 }
@@ -609,27 +668,41 @@ function resetWeek(){
     const dkey = dk(date);
     delete state.checks[dkey];
     delete state.added[dkey];
+    delete state.removed[dkey];
+    delete state.stretchChecks[dkey];
+    delete state.stretchRemoved[dkey];
   }
   ss(state);
   render();
 }
 
-function renderStretchPane(){
+function renderStretchPane(state){
+  const visibleStretches = getVisibleStretches(selDate,state);
+  const stretchChecks = getStretchChecks(state,selDate);
+
   let html = `<div class="stretch-pane">
     <div class="stretch-head">
       <div>
         <div class="stretch-title">Stretch</div>
-        <div class="stretch-sub">Tap i to show details.</div>
+        <div class="stretch-sub">Tap i for details. Swipe left to remove.</div>
       </div>
     </div>
     <div class="stretch-grid">`;
 
-  STRETCH.forEach(item => {
+  if(!visibleStretches.length) {
+    html += `<div class="empty-day-note" style="grid-column:1/-1">No stretches left on this day.</div>`;
+  }
+
+  visibleStretches.forEach(item => {
     const isOpen = openStretchInfoId === item.id;
-    html += `<div class="stretch-tile">
+    const isDone = !!stretchChecks[item.id];
+    html += `<div class="stretch-tile swipe-remove${isDone ? ' done' : ''}" data-kind="stretch" data-id="${item.id}">
       <div class="stretch-top">
-        <div class="stretch-name">${esc(item.name)}</div>
-        <button class="stretch-info-btn" onclick="event.stopPropagation();toggleStretchInfo('${item.id}')" aria-label="Stretch info">i</button>
+        <div class="stretch-name${isDone ? ' done' : ''}">${esc(item.name)}</div>
+        <div class="stretch-actions">
+          <button class="stretch-check-btn${isDone ? ' done' : ''}" onclick="event.stopPropagation();toggleStretchComplete('${item.id}')" aria-label="Mark stretch complete">✓</button>
+          <button class="stretch-info-btn" onclick="event.stopPropagation();toggleStretchInfo('${item.id}')" aria-label="Stretch info">i</button>
+        </div>
       </div>
       ${isOpen ? `<div class="stretch-tooltip">${esc(item.desc)}<div class="stretch-tooltip-meta">${esc(item.dur)} · ${esc(item.target)}</div></div>` : ''}
     </div>`;
@@ -698,7 +771,7 @@ function renderWorkoutView(state,today){
     <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
   </header>`;
 
-  html += `<div class="day-layout"><div class="exercise-pane"><div class="section-label">Exercises</div><div class="exercise-list">`;
+  html += `<div class="day-layout"><div class="exercise-pane"><div class="section-label">Exercises · swipe left to remove</div><div class="exercise-list">`;
 
   if(day.rest && visibleExercises.length === 0) {
     html += `<div class="rest-screen"><div class="rest-title">Rest day</div><div class="rest-sub">Recovery still counts. Keep stretch in the bottom block and add an exercise only if you actually did it.</div></div>`;
@@ -708,7 +781,7 @@ function renderWorkoutView(state,today){
     visibleExercises.forEach(ex => {
       const done = !!checks[ex.instanceId];
       const clickAttr = isFuture ? '' : `onclick="toggleEx('${dkey}','${ex.instanceId}')"`;
-      html += `<div class="ex-item${done ? ' done' : ''}${isFuture ? ' readonly' : ''}" ${clickAttr}>
+      html += `<div class="ex-item swipe-remove${done ? ' done' : ''}${isFuture ? ' readonly' : ''}" data-kind="exercise" data-id="${ex.instanceId}" ${clickAttr}>
         <div class="check-circle"><div class="checkmark"></div></div>
         <div class="ex-main">
           <div class="ex-name">${esc(ex.name)}</div>
@@ -718,13 +791,12 @@ function renderWorkoutView(state,today){
             ${!ex.builtIn ? '<span class="meta-chip added">added</span>' : ''}
           </div>
         </div>
-        ${!ex.builtIn ? `<button class="ex-remove" onclick="event.stopPropagation();removeExercise('${ex.instanceId}')" aria-label="Remove exercise">x</button>` : ''}
       </div>`;
     });
     if(doneCount === visibleExercises.length) html += `<div class="complete-banner">Session complete</div>`;
   }
 
-  html += `</div></div>${renderStretchPane()}</div>`;
+  html += `</div></div>${renderStretchPane(state)}</div>`;
   html += renderAddModal(state);
   return html;
 }
@@ -795,6 +867,62 @@ function renderHistory(state,today){
   return html;
 }
 
+function attachSwipeHandlers(){
+  const items = document.querySelectorAll('.swipe-remove');
+  items.forEach(item => {
+    let startX = 0;
+    let deltaX = 0;
+    let activePointer = null;
+    let swiped = false;
+
+    item.addEventListener('pointerdown', event => {
+      if(event.button !== 0) return;
+      if(event.target.closest('button')) return;
+      activePointer = event.pointerId;
+      startX = event.clientX;
+      deltaX = 0;
+      swiped = false;
+      item.style.transition = 'none';
+      item.setPointerCapture(activePointer);
+    });
+
+    item.addEventListener('pointermove', event => {
+      if(activePointer !== event.pointerId) return;
+      const raw = event.clientX - startX;
+      deltaX = Math.min(0, Math.max(raw, -100));
+      if(Math.abs(deltaX) > 8) swiped = true;
+      if(deltaX < 0) item.style.transform = `translateX(${deltaX}px)`;
+    });
+
+    const endSwipe = event => {
+      if(activePointer !== event.pointerId) return;
+      item.releasePointerCapture(activePointer);
+      activePointer = null;
+      item.style.transition = 'transform 0.18s ease';
+
+      if(deltaX <= -60) {
+        const kind = item.dataset.kind;
+        const id = item.dataset.id;
+        if(kind === 'exercise') removeExercise(id);
+        if(kind === 'stretch') removeStretch(id);
+        return;
+      }
+
+      item.style.transform = '';
+      deltaX = 0;
+    };
+
+    item.addEventListener('pointerup', endSwipe);
+    item.addEventListener('pointercancel', endSwipe);
+    item.addEventListener('click', event => {
+      if(!swiped) return;
+      event.preventDefault();
+      event.stopPropagation();
+      swiped = false;
+    }, true);
+  });
+}
+
 function render(){
   const app = document.getElementById('app');
   const today = new Date();
@@ -836,6 +964,7 @@ function render(){
     <div class="nav-btn${view === 'history' ? ' active' : ''}" onclick="setView('history')">History</div>
   </div>`;
   app.innerHTML = html;
+  if(view === 'workout') attachSwipeHandlers();
 }
 
 render();
