@@ -693,7 +693,7 @@ function renderStretchPane(state){
     <div class="stretch-head">
       <div>
         <div class="stretch-title">Stretch</div>
-        <div class="stretch-sub">Tap i for details. Swipe left to remove.</div>
+        <div class="stretch-sub"></div>
       </div>
     </div>
     <div class="stretch-grid">`;
@@ -780,7 +780,7 @@ function renderWorkoutView(state,today){
     <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
   </header>`;
 
-  html += `<div class="day-layout"><div class="exercise-pane"><div class="section-label">Exercises · swipe left to remove</div><div class="exercise-list">`;
+  html += `<div class="day-layout"><div class="exercise-pane"><div class="section-label">Exercises</div><div class="exercise-list">`;
 
   if(day.rest && visibleExercises.length === 0) {
     html += `<div class="rest-screen"><div class="rest-title">Rest day</div><div class="rest-sub">Recovery still counts. Keep stretch in the bottom block and add an exercise only if you actually did it.</div></div>`;
