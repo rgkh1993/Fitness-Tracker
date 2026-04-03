@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Khemka · To Do</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f110e;
+    --surface: #161a14;
+    --surface2: #1c2119;
+    --border: #2a3025;
+    --accent: #8a9a52;
+    --accent-dim: #6b7840;
+    --accent-glow: rgba(138,154,82,0.12);
+    --text: #dde3d0;
+    --text-dim: #7a8570;
+    --text-muted: #4a5244;
+    --star: #c8a84b;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+- { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘DM Sans’, sans-serif;
+overscroll-behavior: none;
+min-height: 100svh;
+}
+
+body {
+display: flex;
+flex-direction: column;
+padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* HEADER */
+.header {
+position: sticky;
+top: 0;
+z-index: 100;
+background: rgba(15,17,14,0.92);
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+border-bottom: 1px solid var(–border);
+padding: 14px 18px 12px;
+padding-top: calc(14px + env(safe-area-inset-top));
+}
+
+.header-top {
+display: flex;
+align-items: center;
+justify-content: space-between;
+margin-bottom: 10px;
+}
+
+.brand-name {
+font-size: 21px;
+font-weight: 600;
+letter-spacing: -0.5px;
+line-height: 1;
+}
+
+.brand-name span {
+font-style: italic;
+font-weight: 300;
+color: var(–accent);
+}
+
+.brand-sub {
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+color: var(–text-muted);
+letter-spacing: 0.05em;
+margin-top: 3px;
+}
+
+.header-actions {
+display: flex;
+align-items: center;
+gap: 7px;
+}
+
+.icon-btn {
+width: 33px;
+height: 33px;
+border-radius: 9px;
+border: 1px solid var(–border);
+background: var(–surface);
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 16px;
+cursor: pointer;
+transition: all 0.15s;
+color: var(–text-dim);
+user-select: none;
+}
+
+.icon-btn:active { transform: scale(0.91); background: var(–surface2); }
+
+.sync-dot {
+width: 7px; height: 7px;
+border-radius: 50%;
+background: var(–text-muted);
+transition: background 0.4s, box-shadow 0.4s;
+flex-shrink: 0;
+}
+.sync-dot.live  { background: var(–accent); box-shadow: 0 0 7px var(–accent); }
+.sync-dot.error { background: #c06060; }
+
+.add-bar {
+display: flex;
+align-items: center;
+gap: 8px;
+background: var(–surface);
+border: 1px solid var(–border);
+border-radius: var(–radius-sm);
+padding: 0 12px;
+height: 37px;
+}
+
+.add-bar input {
+flex: 1;
+background: none;
+border: none;
+outline: none;
+font-family: ‘DM Sans’, sans-serif;
+font-size: 14px;
+color: var(–text);
+caret-color: var(–accent);
+}
+
+.add-bar input::placeholder { color: var(–text-muted); }
+
+/* FILTER ROW */
+.filter-row {
+display: flex;
+gap: 6px;
+padding: 10px 12px;
+overflow-x: auto;
+scrollbar-width: none;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+
+.filter-chip {
+padding: 5px 11px;
+border-radius: 20px;
+border: 1px solid var(–border);
+background: var(–surface);
+font-size: 12px;
+color: var(–text-dim);
+cursor: pointer;
+white-space: nowrap;
+transition: all 0.15s;
+user-select: none;
+}
+
+.filter-chip.active {
+background: var(–accent);
+border-color: var(–accent);
+color: #0f110e;
+font-weight: 600;
+}
+
+/* PROGRESS */
+.progress-bar {
+height: 2px;
+background: var(–border);
+margin: 0 12px 10px;
+border-radius: 1px;
+overflow: hidden;
+}
+
+.progress-fill {
+height: 100%;
+background: linear-gradient(90deg, var(–accent-dim), var(–accent));
+border-radius: 1px;
+transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* STATS */
+.stats-bar {
+display: flex;
+gap: 6px;
+padding: 0 12px 10px;
+overflow-x: auto;
+scrollbar-width: none;
+}
+.stats-bar::-webkit-scrollbar { display: none; }
+
+.stat-chip {
+display: flex;
+align-items: center;
+gap: 5px;
+padding: 4px 10px;
+background: var(–surface);
+border: 1px solid var(–border);
+border-radius: 20px;
+white-space: nowrap;
+font-size: 11px;
+color: var(–text-dim);
+font-family: ‘DM Mono’, monospace;
+}
+
+.stat-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* GRID */
+.grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+padding: 0 12px 24px;
+}
+
+/* QUADRANT */
+.quadrant {
+background: var(–surface);
+border: 1px solid var(–border);
+border-radius: var(–radius);
+overflow: hidden;
+display: flex;
+flex-direction: column;
+transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.quadrant.drag-over {
+border-color: var(–accent);
+box-shadow: 0 0 0 2px var(–accent-glow);
+}
+
+.quad-header {
+padding: 10px 11px 8px;
+border-bottom: 1px solid var(–border);
+display: flex;
+align-items: center;
+gap: 5px;
+cursor: grab;
+user-select: none;
+}
+
+.quad-header:active { cursor: grabbing; }
+
+.drag-handle { font-size: 10px; color: var(–text-muted); letter-spacing: -1px; line-height: 1; }
+.quad-emoji  { font-size: 12px; }
+
+.quad-title {
+font-family: ‘DM Mono’, monospace;
+font-size: 9px;
+font-weight: 500;
+letter-spacing: 0.12em;
+text-transform: uppercase;
+color: var(–text-dim);
+flex: 1;
+}
+
+.quad-count {
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+color: var(–accent);
+background: var(–accent-glow);
+padding: 2px 6px;
+border-radius: 6px;
+}
+
+.quad-body { flex: 1; padding: 3px 0; }
+
+/* TASK */
+.task {
+display: flex;
+align-items: center;
+gap: 6px;
+padding: 6px 11px;
+transition: background 0.12s;
+}
+
+.task:active { background: var(–surface2); }
+
+.task-check {
+width: 16px; height: 16px;
+border-radius: 50%;
+border: 1.5px solid var(–border);
+flex-shrink: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.2s;
+cursor: pointer;
+}
+
+.task.done .task-check {
+background: var(–accent);
+border-color: var(–accent);
+}
+
+.task.done .task-check::after {
+content: ‘✓’;
+color: #0f110e;
+font-size: 8px;
+font-weight: 700;
+}
+
+.task-label {
+flex: 1;
+font-size: 11.5px;
+color: var(–text);
+line-height: 1.3;
+transition: opacity 0.2s;
+word-break: break-word;
+}
+
+.task.done .task-label {
+opacity: 0.32;
+text-decoration: line-through;
+text-decoration-color: var(–text-muted);
+}
+
+.task-meta {
+display: flex;
+align-items: center;
+gap: 2px;
+flex-shrink: 0;
+}
+
+.owner { font-size: 12px; line-height: 1; }
+
+.star-btn {
+font-size: 11px;
+cursor: pointer;
+opacity: 0.35;
+transition: transform 0.15s, opacity 0.15s;
+line-height: 1;
+color: var(–text-dim);
+}
+.star-btn:active { transform: scale(1.4); }
+.star-btn.starred { opacity: 1; color: var(–star); }
+
+.quad-more {
+padding: 4px 11px 8px;
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+color: var(–accent-dim);
+cursor: pointer;
+letter-spacing: 0.04em;
+border: none;
+background: none;
+text-align: left;
+user-select: none;
+}
+
+.empty-state {
+padding: 14px 11px;
+text-align: center;
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+color: var(–text-muted);
+}
+
+/* SHEET */
+.sheet-overlay {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.65);
+z-index: 200;
+backdrop-filter: blur(5px);
+-webkit-backdrop-filter: blur(5px);
+align-items: flex-end;
+}
+
+.sheet-overlay.open { display: flex; }
+
+.sheet {
+width: 100%;
+background: var(–surface);
+border-top: 1px solid var(–border);
+border-radius: 22px 22px 0 0;
+padding: 12px 20px;
+padding-bottom: calc(28px + env(safe-area-inset-bottom));
+animation: slideUp 0.26s cubic-bezier(0.32,0.72,0,1);
+}
+
+@keyframes slideUp {
+from { transform: translateY(100%); }
+to   { transform: translateY(0); }
+}
+
+.sheet-handle {
+width: 36px; height: 4px;
+background: var(–border);
+border-radius: 2px;
+margin: 0 auto 18px;
+}
+
+.sheet-title {
+font-family: ‘DM Mono’, monospace;
+font-size: 11px;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+color: var(–text-muted);
+margin-bottom: 14px;
+}
+
+.sheet-input {
+width: 100%;
+background: var(–surface2);
+border: 1px solid var(–border);
+border-radius: var(–radius-sm);
+padding: 12px 14px;
+font-family: ‘DM Sans’, sans-serif;
+font-size: 15px;
+color: var(–text);
+outline: none;
+caret-color: var(–accent);
+margin-bottom: 11px;
+}
+
+.sheet-input:focus { border-color: var(–accent-dim); }
+
+.sheet-label {
+font-family: ‘DM Mono’, monospace;
+font-size: 9.5px;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+color: var(–text-muted);
+margin-bottom: 7px;
+}
+
+/* Category pills */
+.cat-pills {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 6px;
+margin-bottom: 14px;
+}
+
+.cat-pill {
+padding: 9px 8px;
+background: var(–surface2);
+border: 1.5px solid var(–border);
+border-radius: var(–radius-sm);
+font-size: 12px;
+text-align: center;
+cursor: pointer;
+transition: all 0.15s;
+color: var(–text-dim);
+user-select: none;
+}
+
+.cat-pill.selected {
+border-color: var(–accent);
+background: var(–accent-glow);
+color: var(–text);
+}
+
+/* Owner pills */
+.owner-pills {
+display: flex;
+gap: 6px;
+margin-bottom: 16px;
+}
+
+.owner-pill {
+flex: 1;
+padding: 10px 6px;
+background: var(–surface2);
+border: 1.5px solid var(–border);
+border-radius: var(–radius-sm);
+font-size: 20px;
+text-align: center;
+cursor: pointer;
+transition: all 0.15s;
+user-select: none;
+}
+
+.owner-pill.selected {
+border-color: var(–accent);
+background: var(–accent-glow);
+}
+
+.sheet-submit {
+width: 100%;
+background: var(–accent);
+border: none;
+border-radius: var(–radius-sm);
+padding: 13px;
+font-family: ‘DM Sans’, sans-serif;
+font-size: 15px;
+font-weight: 600;
+color: #0f110e;
+cursor: pointer;
+transition: opacity 0.15s;
+}
+
+.sheet-submit:active   { opacity: 0.82; }
+.sheet-submit:disabled { opacity: 0.45; }
+
+/* TOAST */
+.toast {
+position: fixed;
+bottom: calc(20px + env(safe-area-inset-bottom));
+left: 50%;
+transform: translateX(-50%) translateY(70px);
+background: var(–surface2);
+border: 1px solid var(–border);
+border-radius: 20px;
+padding: 8px 16px;
+font-size: 12px;
+color: var(–text-dim);
+font-family: ‘DM Mono’, monospace;
+transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+z-index: 300;
+white-space: nowrap;
+pointer-events: none;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="brand-name">Khemka <span>To Do</span></div>
+      <div class="brand-sub" id="remaining-label">connecting…</div>
+    </div>
+    <div class="header-actions">
+      <div class="sync-dot" id="sync-dot" title="Sync status"></div>
+      <div class="icon-btn" id="star-filter-btn" onclick="toggleStarFilter()" title="Starred only">☆</div>
+      <div class="icon-btn" onclick="openSheet()">＋</div>
+    </div>
+  </div>
+  <div class="add-bar">
+    <span style="font-size:13px;color:var(--text-muted)">🔍</span>
+    <input type="text" placeholder="Search tasks…" oninput="filterBySearch(this.value)">
+  </div>
+</div>
+
+<!-- FILTERS -->
+
+<div class="filter-row">
+  <div class="filter-chip active" onclick="setOwnerFilter('all',this)">All</div>
+  <div class="filter-chip" onclick="setOwnerFilter('👨🏻',this)">👨🏻 Rishab</div>
+  <div class="filter-chip" onclick="setOwnerFilter('👩🏻',this)">👩🏻 Kimi</div>
+  <div class="filter-chip" onclick="setOwnerFilter('👫🏻',this)">👫🏻 Both</div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+<div class="stats-bar" id="stats-bar"></div>
+<div class="grid" id="quad-grid"></div>
+
+<!-- ADD SHEET -->
+
+<div class="sheet-overlay" id="sheet-overlay" onclick="closeSheetOnOverlay(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">New Task</div>
+    <input class="sheet-input" id="sheet-task-input" type="text" placeholder="What needs to be done?" maxlength="80">
+
+```
+<div class="sheet-label">Category</div>
+<div class="cat-pills">
+  <div class="cat-pill selected" data-cat="priority" onclick="selectCat(this)">🚀 Priority</div>
+  <div class="cat-pill" data-cat="baby" onclick="selectCat(this)">👶 Baby</div>
+  <div class="cat-pill" data-cat="work" onclick="selectCat(this)">💼 Work</div>
+  <div class="cat-pill" data-cat="personal" onclick="selectCat(this)">🌿 Personal</div>
+</div>
+
+<div class="sheet-label">Owner</div>
+<div class="owner-pills">
+  <div class="owner-pill selected" data-owner="👨🏻" onclick="selectOwner(this)">👨🏻</div>
+  <div class="owner-pill" data-owner="👩🏻" onclick="selectOwner(this)">👩🏻</div>
+  <div class="owner-pill" data-owner="👫🏻" onclick="selectOwner(this)">👫🏻</div>
+</div>
+
+<button class="sheet-submit" id="sheet-submit" onclick="addTask()">Add Task</button>
+```
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──
+const URL  = 'https://zhpdtdbimfowccqdwfph.supabase.co';
+const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpocGR0ZGJpbWZvd2NjcWR3ZnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxODAzNTYsImV4cCI6MjA5MDc1NjM1Nn0.ArLb9_tdcijqVeUL23z8A7CyCS_iYMFKFeHXyahkGzw';
+const REST = `${URL}/rest/v1/tasks`;
+const HEADERS = { 'apikey': KEY, 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+// ── CATEGORIES ──
+const CATEGORIES = [
+  { id:'priority', title:'Priority', emoji:'🚀', color:'#c06060' },
+  { id:'baby',     title:'Baby',     emoji:'👶', color:'#c0a060' },
+  { id:'work',     title:'Work',     emoji:'💼', color:'#7090c0' },
+  { id:'personal', title:'Personal', emoji:'🌿', color:'#8a9a52' },
+];
+
+// ── STATE ──
+let tasks        = [];
+let quadOrder    = ['priority','baby','work','personal'];
+let expandedCats = {};
+let ownerFilter  = 'all';
+let starFilter   = false;
+let searchQuery  = '';
+let selectedCat  = 'priority';
+let selectedOwner = '👨🏻';
+let dragSrc      = null;
+let pollTimer    = null;
+
+// ── REST HELPERS ──
+async function apiFetch(path, options = {}) {
+  const res = await fetch(REST + path, { headers: HEADERS, ...options });
+  if (!res.ok) throw new Error(await res.text());
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function loadTasks() {
+  setSyncDot('');
+  try {
+    const data = await apiFetch('?order=created_at.asc');
+    tasks = data || [];
+    setSyncDot('live');
+    render();
+    startPolling();
+  } catch(e) {
+    setSyncDot('error');
+    showToast('Could not connect');
+  }
+}
+
+// Poll every 8 seconds for real-time-like sync (no websocket needed)
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const data = await apiFetch('?order=created_at.asc');
+      tasks = data || [];
+      render();
+      setSyncDot('live');
+    } catch(e) {
+      setSyncDot('error');
+    }
+  }, 8000);
+}
+
+async function dbAdd(task) {
+  const data = await apiFetch('', { method:'POST', body: JSON.stringify(task) });
+  return Array.isArray(data) ? data[0] : data;
+}
+
+async function dbUpdate(id, changes) {
+  await apiFetch(`?id=eq.${id}`, { method:'PATCH', body: JSON.stringify(changes) });
+}
+
+async function dbDelete(id) {
+  await apiFetch(`?id=eq.${id}`, { method:'DELETE' });
+}
+
+function setSyncDot(state) {
+  const d = document.getElementById('sync-dot');
+  d.className = 'sync-dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
+}
+
+// ── FILTERS ──
+function setOwnerFilter(val, el) {
+  ownerFilter = val;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function toggleStarFilter() {
+  starFilter = !starFilter;
+  const btn = document.getElementById('star-filter-btn');
+  btn.textContent = starFilter ? '★' : '☆';
+  btn.style.color  = starFilter ? 'var(--star)' : '';
+  render();
+}
+
+function filterBySearch(val) {
+  searchQuery = val.trim().toLowerCase();
+  render();
+}
+
+function getVisible(cat) {
+  return tasks.filter(t => {
+    if (t.category !== cat) return false;
+    if (ownerFilter !== 'all' && t.owner !== ownerFilter) return false;
+    if (starFilter && !t.starred) return false;
+    if (searchQuery && !t.label.toLowerCase().includes(searchQuery)) return false;
+    return true;
+  });
+}
+
+// ── RENDER ──
+function render() {
+  // Header
+  const rem = tasks.filter(t => !t.done).length;
+  document.getElementById('remaining-label').textContent = `${rem} task${rem !== 1 ? 's' : ''} remaining`;
+
+  // Stats
+  document.getElementById('stats-bar').innerHTML = CATEGORIES.map(cat => {
+    const n = tasks.filter(t => t.category === cat.id && !t.done).length;
+    return `<div class="stat-chip"><span class="dot" style="background:${cat.color}"></span>${cat.emoji} ${n}</div>`;
+  }).join('');
+
+  // Progress
+  const done = tasks.filter(t => t.done).length;
+  document.getElementById('progress-fill').style.width = (tasks.length ? Math.round(done / tasks.length * 100) : 0) + '%';
+
+  // Grid
+  const grid = document.getElementById('quad-grid');
+  grid.innerHTML = '';
+
+  quadOrder.forEach(catId => {
+    const cat     = CATEGORIES.find(c => c.id === catId);
+    const visible = getVisible(catId);
+    const PREVIEW = 4;
+    const expanded = expandedCats[catId];
+    const shown    = expanded ? visible : visible.slice(0, PREVIEW);
+    const hidden   = visible.length - PREVIEW;
+
+    const q = document.createElement('div');
+    q.className = 'quadrant';
+    q.setAttribute('draggable', 'true');
+    q.dataset.cat = catId;
+
+    // Drag to reorder quadrants
+    q.addEventListener('dragstart', e => { dragSrc = catId; e.dataTransfer.effectAllowed = 'move'; });
+    q.addEventListener('dragover',  e => { e.preventDefault(); q.classList.add('drag-over'); });
+    q.addEventListener('dragleave', ()  => q.classList.remove('drag-over'));
+    q.addEventListener('drop', e => {
+      e.preventDefault(); q.classList.remove('drag-over');
+      if (dragSrc && dragSrc !== catId) {
+        const a = quadOrder.indexOf(dragSrc), b = quadOrder.indexOf(catId);
+        [quadOrder[a], quadOrder[b]] = [quadOrder[b], quadOrder[a]];
+        render();
+      }
+    });
+
+    q.innerHTML = `
+      <div class="quad-header">
+        <span class="drag-handle">⠿</span>
+        <span class="quad-emoji">${cat.emoji}</span>
+        <span class="quad-title">${cat.title}</span>
+        <span class="quad-count">${visible.length}</span>
+      </div>
+      <div class="quad-body">
+        ${shown.length === 0
+          ? `<div class="empty-state">all clear ✓</div>`
+          : shown.map(t => `
+            <div class="task ${t.done ? 'done' : ''}" data-id="${t.id}">
+              <div class="task-check"></div>
+              <div class="task-label">${esc(t.label)}</div>
+              <div class="task-meta">
+                <span class="owner">${t.owner}</span>
+                <span class="star-btn ${t.starred ? 'starred' : ''}">★</span>
+              </div>
+            </div>`).join('')
+        }
+      </div>
+      ${visible.length > PREVIEW
+        ? `<button class="quad-more" data-cat="${catId}">${expanded ? '↑ less' : `↓ +${hidden} more`}</button>`
+        : ''}
+    `;
+
+    // Wire task events
+    q.querySelectorAll('.task-check').forEach(el =>
+      el.addEventListener('click', e => { e.stopPropagation(); toggleDone(+el.closest('.task').dataset.id); })
+    );
+    q.querySelectorAll('.star-btn').forEach(el =>
+      el.addEventListener('click', e => { e.stopPropagation(); toggleStar(+el.closest('.task').dataset.id); })
+    );
+
+    // Long press = delete
+    q.querySelectorAll('.task').forEach(el => {
+      let pt;
+      el.addEventListener('touchstart',  () => { pt = setTimeout(() => confirmDelete(+el.dataset.id, el.querySelector('.task-label').textContent.trim()), 650); });
+      el.addEventListener('touchend',    () => clearTimeout(pt));
+      el.addEventListener('touchmove',   () => clearTimeout(pt));
+      el.addEventListener('touchcancel', () => clearTimeout(pt));
+    });
+
+    const moreBtn = q.querySelector('.quad-more');
+    if (moreBtn) moreBtn.addEventListener('click', () => { expandedCats[catId] = !expandedCats[catId]; render(); });
+
+    grid.appendChild(q);
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── ACTIONS ──
+async function toggleDone(id) {
+  const t = tasks.find(t => t.id === id); if (!t) return;
+  t.done = !t.done; render();
+  try { await dbUpdate(id, { done: t.done }); } catch { t.done = !t.done; render(); showToast('Update failed'); }
+}
+
+async function toggleStar(id) {
+  const t = tasks.find(t => t.id === id); if (!t) return;
+  t.starred = !t.starred; render();
+  try { await dbUpdate(id, { starred: t.starred }); } catch { t.starred = !t.starred; render(); showToast('Update failed'); }
+}
+
+function confirmDelete(id, label) {
+  if (confirm(`Delete "${label}"?`)) deleteTask(id);
+}
+
+async function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id); render();
+  try { await dbDelete(id); showToast('Deleted'); } catch { showToast('Delete failed'); await loadTasks(); }
+}
+
+// ── SHEET ──
+function openSheet() {
+  document.getElementById('sheet-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('sheet-task-input').focus(), 300);
+}
+
+function closeSheet() {
+  document.getElementById('sheet-overlay').classList.remove('open');
+  document.getElementById('sheet-task-input').value = '';
+}
+
+function closeSheetOnOverlay(e) {
+  if (e.target === document.getElementById('sheet-overlay')) closeSheet();
+}
+
+function selectCat(el) {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedCat = el.dataset.cat;
+}
+
+function selectOwner(el) {
+  document.querySelectorAll('.owner-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedOwner = el.dataset.owner;
+}
+
+async function addTask() {
+  const label = document.getElementById('sheet-task-input').value.trim();
+  if (!label) { document.getElementById('sheet-task-input').focus(); return; }
+  const btn = document.getElementById('sheet-submit');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const saved = await dbAdd({ label, category: selectedCat, owner: selectedOwner, starred: false, done: false });
+    if (saved) { tasks.push(saved); render(); closeSheet(); showToast('Task added ✓'); }
+  } catch { showToast('Could not save task'); }
+  btn.disabled = false; btn.textContent = 'Add Task';
+}
+
+document.getElementById('sheet-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── INIT ──
+loadTasks();
+</script>
+
+</body>
+</html>
