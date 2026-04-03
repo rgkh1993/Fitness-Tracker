@@ -11,94 +11,419 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
-  --bg:#0e0e0e; --surface:#1a1a1a; --border:#2a2a2a;
-  --accent:#c8f060; --accent-dim:#c8f06018;
-  --text:#f0f0e8; --muted:#555;
-  --done-bg:#1a2a0a; --done-border:#3a5a1a;
-  --blue:#60b8f0; --blue-dim:#60b8f015;
+  --bg:#0e0e0e;
+  --surface:#181818;
+  --surface-2:#202020;
+  --border:#2b2b2b;
+  --accent:#c8f060;
+  --accent-dim:#c8f06018;
+  --text:#f0f0e8;
+  --muted:#6d6d66;
+  --done-bg:#18230b;
+  --done-border:#516f20;
+  --blue:#60b8f0;
+  --blue-dim:#60b8f012;
+  --blue-border:#2a5166;
+  --danger:#f07070;
+  --danger-dim:#351414;
+  --shadow:0 14px 36px rgba(0,0,0,0.35);
 }
-body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif; min-height:100vh; min-height:-webkit-fill-available; overscroll-behavior:none; }
-.app { max-width:430px; margin:0 auto; padding:env(safe-area-inset-top,44px) 0 env(safe-area-inset-bottom,34px); min-height:100vh; display:flex; flex-direction:column; }
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+  min-height:100vh;
+  min-height:-webkit-fill-available;
+  overscroll-behavior:none;
+}
+.app {
+  max-width:430px;
+  margin:0 auto;
+  padding:env(safe-area-inset-top,44px) 0 env(safe-area-inset-bottom,34px);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
 .week-strip { padding:16px 16px 0; }
 .week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .week-label-text { font-size:13px; font-weight:600; color:var(--muted); letter-spacing:0.04em; }
-.week-arrow { width:28px; height:28px; border-radius:50%; border:0.5px solid var(--border); background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--muted); transition:all 0.15s; }
+.week-arrow {
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  border:0.5px solid var(--border);
+  background:var(--surface);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  font-size:16px;
+  color:var(--muted);
+  transition:all 0.15s;
+}
 .week-arrow:active { opacity:0.5; transform:scale(0.9); }
 .days-row { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
-.day-pill { display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 2px; border-radius:10px; cursor:pointer; transition:all 0.15s; border:0.5px solid transparent; }
+.day-pill {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:8px 2px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:all 0.15s;
+  border:0.5px solid transparent;
+}
 .day-pill:active { opacity:0.6; }
 .day-pill.active { background:var(--accent-dim); border-color:var(--accent); }
 .dp-name { font-size:10px; color:var(--muted); font-weight:500; }
 .dp-num { font-size:16px; font-weight:600; color:var(--text); }
-.day-pill.active .dp-name { color:var(--accent); }
-.day-pill.active .dp-num { color:var(--accent); }
+.day-pill.active .dp-name,
+.day-pill.active .dp-num,
 .day-pill.is-today .dp-num { color:var(--accent); }
 .dp-dot { width:4px; height:4px; border-radius:50%; background:transparent; }
 .day-pill.has-workout .dp-dot { background:var(--muted); }
-.day-pill.active .dp-dot { background:var(--accent); }
+.day-pill.active .dp-dot,
 .day-pill.all-done .dp-dot { background:var(--accent); }
 header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
-.header-row { display:flex; justify-content:space-between; align-items:center; }
+.header-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.header-copy { min-width:0; }
 .day-title { font-size:28px; font-weight:700; letter-spacing:-0.5px; line-height:1; }
 .day-title.rest { color:var(--muted); }
-.progress-pill { background:var(--surface); border:0.5px solid var(--border); border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; color:var(--accent); }
-.date-sub { font-size:12px; color:var(--muted); margin-top:3px; }
+.date-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+.header-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.progress-pill {
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:20px;
+  padding:5px 12px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--accent);
+}
+.add-btn {
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  border:0.5px solid var(--border);
+  background:var(--surface);
+  color:var(--accent);
+  font-size:20px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.add-btn:active { opacity:0.6; transform:scale(0.94); }
 .prog-bar-wrap { margin-top:10px; height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
 .prog-bar { height:100%; background:var(--accent); border-radius:2px; transition:width 0.4s ease; }
-.tabs { display:flex; gap:6px; padding:12px 16px 0; }
-.tab { flex:1; padding:9px; border-radius:10px; border:0.5px solid var(--border); background:transparent; color:var(--muted); font-size:12px; font-weight:500; cursor:pointer; text-align:center; transition:all 0.15s; }
-.tab:active { opacity:0.6; }
-.tab.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
-.tab.active-blue { background:var(--blue-dim); border-color:var(--blue); color:var(--blue); }
-.exercises { flex:1; padding:12px 16px 0; display:flex; flex-direction:column; gap:7px; }
-.ex-item { background:var(--surface); border:0.5px solid var(--border); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all 0.2s; user-select:none; -webkit-user-select:none; }
-.ex-item:active { transform:scale(0.98); opacity:0.8; }
-.ex-item.done { background:var(--done-bg); border-color:var(--done-border); }
-.ex-item.readonly { cursor:default; opacity:0.5; }
-.check-circle { width:24px; height:24px; border-radius:50%; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s; }
-.ex-item.done .check-circle { background:var(--accent); border-color:var(--accent); }
-.checkmark { width:9px; height:6px; border-left:2px solid #0e0e0e; border-bottom:2px solid #0e0e0e; transform:rotate(-45deg) translateY(-1px); opacity:0; transition:opacity 0.15s; }
+.day-layout {
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px 16px 0;
+}
+.exercise-pane {
+  flex:2;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.exercise-list {
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.section-label {
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--muted);
+  padding:2px 2px 8px;
+}
+.rest-screen,
+.empty-day-note {
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:16px;
+  padding:18px;
+  text-align:center;
+}
+.rest-title { font-size:17px; font-weight:700; color:var(--muted); }
+.rest-sub,
+.empty-day-note {
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.6;
+}
+.rest-sub { margin-top:6px; }
+.empty-day-note { font-size:13px; }
+.ex-item {
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:16px;
+  padding:14px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+  transition:all 0.18s;
+  user-select:none;
+}
+.ex-item:active { transform:scale(0.985); }
+.ex-item.done {
+  background:linear-gradient(180deg, rgba(200,240,96,0.18), rgba(24,35,11,0.9));
+  border-color:var(--done-border);
+}
+.ex-item.readonly { cursor:default; }
+.check-circle {
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  border:1.5px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+.ex-item.done .check-circle {
+  background:var(--accent);
+  border-color:var(--accent);
+}
+.checkmark {
+  width:9px;
+  height:6px;
+  border-left:2px solid #0e0e0e;
+  border-bottom:2px solid #0e0e0e;
+  transform:rotate(-45deg) translateY(-1px);
+  opacity:0;
+}
 .ex-item.done .checkmark { opacity:1; }
-.ex-info { flex:1; }
-.ex-name { font-size:15px; font-weight:500; letter-spacing:-0.2px; color:var(--text); transition:color 0.2s; }
-.ex-item.done .ex-name { color:var(--muted); text-decoration:line-through; }
-.ex-sets { font-size:12px; color:var(--muted); margin-top:1px; }
-.ex-item.done .ex-sets { color:#3a3a3a; }
-.ex-tag { font-size:10px; padding:2px 7px; border-radius:5px; font-weight:500; background:#c8f06015; color:#8ab040; flex-shrink:0; }
-.rest-screen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; text-align:center; }
-.rest-icon { font-size:52px; margin-bottom:14px; }
-.rest-title { font-size:22px; font-weight:700; color:var(--muted); margin-bottom:6px; }
-.rest-sub { font-size:13px; color:#444; line-height:1.6; }
-.complete-banner { margin:10px 16px 0; padding:13px 18px; background:var(--done-bg); border:0.5px solid var(--done-border); border-radius:12px; text-align:center; font-size:14px; font-weight:500; color:var(--accent); }
-.stretch-list { flex:1; padding:12px 16px 0; display:flex; flex-direction:column; gap:7px; overflow-y:auto; }
-.stretch-item { background:var(--surface); border:0.5px solid var(--border); border-radius:14px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; }
-.stretch-num { width:22px; height:22px; border-radius:50%; background:var(--blue-dim); border:0.5px solid var(--blue); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--blue); flex-shrink:0; margin-top:1px; }
-.stretch-info { flex:1; }
-.stretch-name { font-size:15px; font-weight:500; color:var(--text); }
-.stretch-desc { font-size:12px; color:var(--muted); margin-top:3px; line-height:1.5; }
-.stretch-duration { font-size:11px; color:var(--blue); margin-top:4px; font-weight:500; }
-.stretch-target { display:inline-block; font-size:10px; padding:2px 7px; border-radius:5px; background:var(--blue-dim); color:var(--blue); margin-top:4px; }
+.ex-main { flex:1; min-width:0; }
+.ex-name { font-size:15px; font-weight:600; letter-spacing:-0.2px; color:var(--text); }
+.ex-meta {
+  font-size:12px;
+  color:var(--muted);
+  margin-top:4px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.meta-chip {
+  display:inline-flex;
+  align-items:center;
+  padding:2px 7px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.04);
+  border:0.5px solid var(--border);
+  font-size:10px;
+  color:var(--muted);
+}
+.meta-chip.posture { background:#c8f06015; color:#9bc14a; border-color:#324717; }
+.meta-chip.added { background:#1b2430; color:#9fc5ff; border-color:#2e4664; }
+.ex-remove {
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  border:0.5px solid #472020;
+  background:var(--danger-dim);
+  color:var(--danger);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.ex-remove:active { opacity:0.7; }
+.complete-banner {
+  margin-top:8px;
+  padding:12px 16px;
+  background:var(--done-bg);
+  border:0.5px solid var(--done-border);
+  border-radius:12px;
+  text-align:center;
+  font-size:13px;
+  font-weight:600;
+  color:var(--accent);
+}
+.stretch-pane {
+  flex:1;
+  min-height:120px;
+  overflow-y:auto;
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:16px;
+  padding:12px;
+}
+.stretch-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.stretch-title { font-size:14px; font-weight:700; letter-spacing:-0.2px; }
+.stretch-sub { font-size:11px; color:var(--muted); }
+.stretch-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.stretch-tile {
+  position:relative;
+  background:var(--surface-2);
+  border:0.5px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  min-width:0;
+}
+.stretch-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.stretch-name { font-size:12px; font-weight:600; line-height:1.35; color:var(--text); }
+.stretch-info-btn {
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:0.5px solid var(--blue-border);
+  background:rgba(96,184,240,0.12);
+  color:var(--blue);
+  font-size:11px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.stretch-tooltip {
+  margin-top:8px;
+  font-size:11px;
+  line-height:1.45;
+  color:#c8d9e4;
+  background:var(--blue-dim);
+  border:0.5px solid var(--blue-border);
+  border-radius:10px;
+  padding:8px;
+}
+.stretch-tooltip-meta { color:var(--blue); margin-top:6px; font-size:10px; }
 .history-screen { flex:1; padding:12px 16px 0; overflow-y:auto; }
 .week-block { margin-bottom:20px; }
 .wk-lbl { font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
 .history-day { background:var(--surface); border:0.5px solid var(--border); border-radius:12px; padding:11px 14px; margin-bottom:5px; }
-.history-day-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.history-day-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:5px; }
 .history-day-name { font-size:13px; font-weight:600; }
-.hbadge { font-size:10px; padding:2px 8px; border-radius:5px; font-weight:500; }
+.hbadge { font-size:10px; padding:2px 8px; border-radius:5px; font-weight:500; white-space:nowrap; }
 .badge-full { background:#1a2a0a; color:var(--accent); }
 .badge-partial { background:#2a1a0a; color:#f0a060; }
 .badge-skipped { background:#2a0a0a; color:#f06060; }
-.badge-rest { background:var(--border); color:var(--muted); }
+.badge-rest,
+.badge-empty { background:var(--border); color:var(--muted); }
 .history-exes { display:flex; flex-wrap:wrap; gap:3px; }
 .history-ex { font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg); color:var(--muted); border:0.5px solid var(--border); }
 .history-ex.done { background:var(--done-bg); color:#8ab040; border-color:var(--done-border); }
 .empty-history { text-align:center; padding:60px 24px; color:var(--muted); font-size:14px; line-height:1.7; }
 .bottom-nav { display:flex; padding:10px 16px; border-top:0.5px solid var(--border); gap:6px; margin-top:12px; }
-.nav-btn { flex:1; padding:11px; border-radius:10px; border:0.5px solid var(--border); background:var(--surface); color:var(--muted); font-size:12px; font-weight:500; cursor:pointer; text-align:center; transition:all 0.15s; }
+.nav-btn {
+  flex:1;
+  padding:11px;
+  border-radius:10px;
+  border:0.5px solid var(--border);
+  background:var(--surface);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s;
+}
 .nav-btn:active { opacity:0.6; }
 .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
-.reset-btn { margin:8px 16px 0; padding:11px; border-radius:10px; border:0.5px solid #3a1a1a; background:#1a0a0a; color:#f06060; font-size:12px; font-weight:500; cursor:pointer; text-align:center; width:calc(100% - 32px); }
+.reset-btn {
+  margin:8px 16px 0;
+  padding:11px;
+  border-radius:10px;
+  border:0.5px solid #3a1a1a;
+  background:#1a0a0a;
+  color:#f06060;
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  text-align:center;
+  width:calc(100% - 32px);
+}
 .reset-btn:active { opacity:0.6; }
+.modal {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.82);
+  display:none;
+  align-items:flex-end;
+  z-index:100;
+}
+.modal.show { display:flex; }
+.modal-sheet {
+  width:100%;
+  max-width:430px;
+  margin:0 auto;
+  background:#151515;
+  border-radius:24px 24px 0 0;
+  border:0.5px solid var(--border);
+  border-bottom:0;
+  padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  max-height:76vh;
+  overflow-y:auto;
+  box-shadow:var(--shadow);
+}
+.modal-handle { width:42px; height:4px; border-radius:999px; background:#303030; margin:0 auto 14px; }
+.modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.modal-title { font-size:18px; font-weight:700; letter-spacing:-0.3px; }
+.modal-sub { font-size:12px; line-height:1.5; color:var(--muted); margin-top:5px; }
+.modal-close {
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:0.5px solid var(--border);
+  background:var(--surface);
+  color:var(--muted);
+  font-size:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.picker-list { display:flex; flex-direction:column; gap:10px; }
+.picker-card { background:var(--surface); border:0.5px solid var(--border); border-radius:14px; padding:12px; }
+.picker-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.picker-name { font-size:14px; font-weight:600; }
+.picker-day { font-size:10px; padding:2px 7px; border-radius:999px; background:#1c2731; color:#9ec7ff; border:0.5px solid #2b4256; }
+.picker-meta { font-size:11px; color:var(--muted); margin-top:4px; }
+.picker-add {
+  margin-top:10px;
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:0.5px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+.picker-add:active { opacity:0.7; }
+.empty-picker {
+  padding:22px 16px;
+  text-align:center;
+  color:var(--muted);
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:14px;
+  font-size:13px;
+  line-height:1.6;
+}
+@media (max-width:380px) {
+  .stretch-grid { grid-template-columns:1fr; }
+  .header-actions { gap:6px; }
+  .progress-pill { padding:5px 10px; }
+}
 </style>
 </head>
 <body>
@@ -140,196 +465,377 @@ const ROUTINE = {
   ]},
 };
 
-const STRETCH=[
-  {n:1,name:'Foam roller hip flexor release',desc:'Lie with foam roller under tailbone/sacrum. Let hips sink and relax fully. Breathe deeply.',dur:'2 min',target:'Hip flexors · APT'},
-  {n:2,name:'Thoracic extension over roller',desc:'Roller across mid-back (T4–T8). Arms crossed or behind head. Extend over it slowly segment by segment.',dur:'2 min',target:'Thoracic · kyphosis'},
-  {n:3,name:'Couch stretch',desc:'Rear foot up on sofa/wall, front foot forward. Keep torso upright, squeeze glute of back leg.',dur:'60s each side',target:'Hip flexors · tight hips'},
-  {n:4,name:'90/90 hip stretch',desc:'Sit with both knees at 90°, one in front one to side. Lean forward over front shin.',dur:'60s each side',target:'Hip rotation'},
-  {n:5,name:'Chin tuck',desc:'Lying flat, draw chin straight back (not down). Hold 5s, release. Activates deep neck flexors.',dur:'3 × 10 reps',target:'Forward head · neck'},
-  {n:6,name:'Doorway pec stretch',desc:'Forearms on doorframe, lean through gently. Targets pec minor pulling shoulders forward.',dur:'3 × 30s',target:'Pec minor · kyphosis'},
-  {n:7,name:'Figure 4 glute stretch',desc:'Lying on back, cross ankle over opposite knee, pull legs toward chest.',dur:'60s each side',target:'Glutes · tight hips'},
+const STRETCH = [
+  {id:'stretch1',name:'Foam roller hip flexor release',desc:'Lie with foam roller under tailbone or sacrum. Let hips sink and relax fully. Breathe deeply.',dur:'2 min',target:'Hip flexors · APT'},
+  {id:'stretch2',name:'Thoracic extension over roller',desc:'Roller across mid-back around T4 to T8. Arms crossed or behind head. Extend over it slowly segment by segment.',dur:'2 min',target:'Thoracic · kyphosis'},
+  {id:'stretch3',name:'Couch stretch',desc:'Rear foot up on sofa or wall, front foot forward. Keep torso upright and squeeze the glute of the back leg.',dur:'60s each side',target:'Hip flexors · tight hips'},
+  {id:'stretch4',name:'90/90 hip stretch',desc:'Sit with both knees at 90 degrees, one in front and one to the side. Lean forward over the front shin.',dur:'60s each side',target:'Hip rotation'},
+  {id:'stretch5',name:'Chin tuck',desc:'Lying flat, draw chin straight back without tipping down. Hold 5 seconds, release, then repeat.',dur:'3 x 10 reps',target:'Forward head · neck'},
+  {id:'stretch6',name:'Doorway pec stretch',desc:'Forearms on the doorframe, then lean through gently. Targets pec minor pulling shoulders forward.',dur:'3 x 30s',target:'Pec minor · kyphosis'},
+  {id:'stretch7',name:'Figure 4 glute stretch',desc:'Lying on your back, cross ankle over the opposite knee and pull legs toward the chest.',dur:'60s each side',target:'Glutes · tight hips'},
 ];
 
-const DS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const STORAGE_KEY = 'gymState4';
+const LEGACY_KEY = 'gymState3';
+const WEEK_ORDER = [1,2,3,4,5,6,0];
 
-let selDate=new Date(); selDate.setHours(0,0,0,0);
-let weekOff=0;
-let view='workout';
-let dayTab='workout';
+let selDate = new Date();
+selDate.setHours(0,0,0,0);
+let weekOff = 0;
+let view = 'workout';
+let addModalOpen = false;
+let openStretchInfoId = null;
 
-function dk(d){return d.toISOString().split('T')[0];}
-function ws(d,o){const s=new Date(d);s.setHours(0,0,0,0);s.setDate(s.getDate()-s.getDay()+(o*7));return s;}
-function ls(){try{return JSON.parse(localStorage.getItem('gymState3')||'{}');}catch(e){return{};}}
-function ss(s){localStorage.setItem('gymState3',JSON.stringify(s));}
+function dk(d){ return d.toISOString().split('T')[0]; }
+function ws(d,o){ const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate()-start.getDay()+(o*7)); return start; }
+function esc(text){ return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-function toggleEx(dkey,exId){
-  const s=ls();
-  if(!s[dkey])s[dkey]={};
-  s[dkey][exId]=!s[dkey][exId];
-  ss(s);render();
+function newState(){ return { checks:{}, added:{} }; }
+function normalizedState(raw){
+  if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return newState();
+
+  if(raw.checks || raw.added){
+    return {
+      checks: raw.checks && typeof raw.checks === 'object' ? raw.checks : {},
+      added: raw.added && typeof raw.added === 'object' ? raw.added : {},
+    };
+  }
+
+  // Legacy format: {dateKey:{exerciseId:boolean}}
+  return { checks: raw, added:{} };
+}
+function ls(){
+  try {
+    const next = localStorage.getItem(STORAGE_KEY);
+    if(next) return normalizedState(JSON.parse(next));
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if(legacy) return normalizedState(JSON.parse(legacy));
+  } catch (error) {}
+  return newState();
+}
+function ss(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function ensureMap(obj,key){ if(!obj[key] || typeof obj[key] !== 'object' || Array.isArray(obj[key])) obj[key] = {}; return obj[key]; }
+function ensureList(obj,key){ if(!Array.isArray(obj[key])) obj[key] = []; return obj[key]; }
+
+function getVisibleExercises(date,state){
+  const dkey = dk(date);
+  const base = (ROUTINE[date.getDay()].exercises || []).map(ex => ({ ...ex, instanceId: ex.id, builtIn: true }));
+  const added = (state.added[dkey] || []).map(ex => ({ ...ex, builtIn: false }));
+  return [...base, ...added];
+}
+function getDayChecks(state,date){ return state.checks[dk(date)] || {}; }
+
+function getExerciseLibrary(date,state){
+  const currentDayIndex = date.getDay();
+  const currentNames = new Set(getVisibleExercises(date,state).map(ex => `${ex.name}__${ex.sets}`));
+  const library = [];
+
+  WEEK_ORDER.forEach(dayIndex => {
+    if(dayIndex === currentDayIndex) return;
+    (ROUTINE[dayIndex].exercises || []).forEach(ex => {
+      const key = `${ex.name}__${ex.sets}`;
+      if(currentNames.has(key)) return;
+      library.push({
+        libraryId: `lib_${ex.id}_${dayIndex}`,
+        sourceDay: ROUTINE[dayIndex].name,
+        name: ex.name,
+        sets: ex.sets,
+        tag: ex.tag || '',
+      });
+    });
+  });
+
+  return library;
 }
 
-function setDay(dateStr){
-  selDate=new Date(dateStr);selDate.setHours(0,0,0,0);render();
+function toggleEx(dkey,instanceId){
+  const state = ls();
+  const checks = ensureMap(state.checks,dkey);
+  checks[instanceId] = !checks[instanceId];
+  ss(state);
+  render();
 }
+function removeExercise(instanceId){
+  const state = ls();
+  const dkey = dk(selDate);
+  const added = ensureList(state.added,dkey);
+  const nextAdded = added.filter(item => item.instanceId !== instanceId);
+  state.added[dkey] = nextAdded;
+  if(state.checks[dkey]) delete state.checks[dkey][instanceId];
+  ss(state);
+  render();
+}
+function addExercise(libraryId){
+  const state = ls();
+  const libraryItem = getExerciseLibrary(selDate,state).find(item => item.libraryId === libraryId);
+  if(!libraryItem) return;
 
-function setWeekOff(o){
-  weekOff=o;
-  const w=ws(new Date(),o);
-  selDate=new Date(w);selDate.setDate(w.getDate()+1);
+  const dkey = dk(selDate);
+  const added = ensureList(state.added,dkey);
+  added.push({
+    instanceId: `added_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+    name: libraryItem.name,
+    sets: libraryItem.sets,
+    tag: libraryItem.tag,
+  });
+  ss(state);
+  addModalOpen = false;
+  render();
+}
+function setDay(dateStr){ selDate = new Date(dateStr); selDate.setHours(0,0,0,0); openStretchInfoId = null; render(); }
+function setWeekOff(offset){
+  weekOff = offset;
+  const weekStart = ws(new Date(),offset);
+  selDate = new Date(weekStart);
+  selDate.setDate(weekStart.getDate()+1);
+  selDate.setHours(0,0,0,0);
+  openStretchInfoId = null;
+  render();
+}
+function openAddModal(){ addModalOpen = true; render(); }
+function closeAddModal(){ addModalOpen = false; render(); }
+function toggleStretchInfo(id){ openStretchInfoId = openStretchInfoId === id ? null : id; render(); }
+function setView(next){ view = next; if(next !== 'workout') addModalOpen = false; render(); }
+
+function resetWeek(){
+  if(!confirm('Reset this week?')) return;
+  const state = ls();
+  const weekStart = ws(new Date(),0);
+  for(let offset = 0; offset < 7; offset++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate()+offset);
+    const dkey = dk(date);
+    delete state.checks[dkey];
+    delete state.added[dkey];
+  }
+  ss(state);
   render();
 }
 
-function render(){
-  const app=document.getElementById('app');
-  const today=new Date();today.setHours(0,0,0,0);
-  const state=ls();
-  const dow=selDate.getDay();
-  const day=ROUTINE[dow];
-  const dkey=dk(selDate);
-  const dayState=state[dkey]||{};
-  const isToday=dkey===dk(today);
-  const isFuture=selDate>today;
-  const weekStart=ws(today,weekOff);
-  const wkLabel=weekOff===0?'This week':weekOff===-1?'Last week':weekOff<0?`${Math.abs(weekOff)} weeks ago`:'Next week';
+function renderStretchPane(){
+  let html = `<div class="stretch-pane">
+    <div class="stretch-head">
+      <div>
+        <div class="stretch-title">Stretch</div>
+        <div class="stretch-sub">Tap i to show details.</div>
+      </div>
+    </div>
+    <div class="stretch-grid">`;
 
-  let h=`<div class="week-strip">
+  STRETCH.forEach(item => {
+    const isOpen = openStretchInfoId === item.id;
+    html += `<div class="stretch-tile">
+      <div class="stretch-top">
+        <div class="stretch-name">${esc(item.name)}</div>
+        <button class="stretch-info-btn" onclick="event.stopPropagation();toggleStretchInfo('${item.id}')" aria-label="Stretch info">i</button>
+      </div>
+      ${isOpen ? `<div class="stretch-tooltip">${esc(item.desc)}<div class="stretch-tooltip-meta">${esc(item.dur)} · ${esc(item.target)}</div></div>` : ''}
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderAddModal(state){
+  const library = getExerciseLibrary(selDate,state);
+  let html = `<div class="modal${addModalOpen ? ' show' : ''}" onclick="closeAddModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Add exercise</div>
+          <div class="modal-sub">Pick from the rest of the week. This adds the exercise only to ${ROUTINE[selDate.getDay()].name} (${MS[selDate.getMonth()]} ${selDate.getDate()}).</div>
+        </div>
+        <button class="modal-close" onclick="closeAddModal()" aria-label="Close">x</button>
+      </div>`;
+
+  if(!library.length) {
+    html += `<div class="empty-picker">No more exercises available from other days of this week.</div>`;
+  } else {
+    html += `<div class="picker-list">`;
+    library.forEach(item => {
+      html += `<div class="picker-card">
+        <div class="picker-top">
+          <div>
+            <div class="picker-name">${esc(item.name)}</div>
+            <div class="picker-meta">${esc(item.sets)}${item.tag === 'posture' ? ' · posture' : ''}</div>
+          </div>
+          <div class="picker-day">${esc(item.sourceDay)}</div>
+        </div>
+        <button class="picker-add" onclick="addExercise('${item.libraryId}')">Add to this day</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderWorkoutView(state,today){
+  const day = ROUTINE[selDate.getDay()];
+  const dkey = dk(selDate);
+  const visibleExercises = getVisibleExercises(selDate,state);
+  const checks = getDayChecks(state,selDate);
+  const isFuture = selDate > today;
+  const doneCount = visibleExercises.filter(ex => checks[ex.instanceId]).length;
+  const pct = visibleExercises.length ? Math.round(doneCount / visibleExercises.length * 100) : 0;
+
+  let html = `<header>
+    <div class="header-row">
+      <div class="header-copy">
+        <div class="day-title${day.rest && visibleExercises.length === 0 ? ' rest' : ''}">${day.name}</div>
+        <div class="date-sub">${MS[selDate.getMonth()]} ${selDate.getDate()}${dkey === dk(today) ? ' · Today' : ''}</div>
+      </div>
+      <div class="header-actions">
+        ${visibleExercises.length ? `<div class="progress-pill">${doneCount}/${visibleExercises.length}</div>` : ''}
+        <button class="add-btn" onclick="openAddModal()" aria-label="Add exercise">+</button>
+      </div>
+    </div>
+    <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+  </header>`;
+
+  html += `<div class="day-layout"><div class="exercise-pane"><div class="section-label">Exercises</div><div class="exercise-list">`;
+
+  if(day.rest && visibleExercises.length === 0) {
+    html += `<div class="rest-screen"><div class="rest-title">Rest day</div><div class="rest-sub">Recovery still counts. Keep stretch in the bottom block and add an exercise only if you actually did it.</div></div>`;
+  } else if(visibleExercises.length === 0) {
+    html += `<div class="empty-day-note">Nothing scheduled on this date right now.<br>Use + to add from the rest of your week.</div>`;
+  } else {
+    visibleExercises.forEach(ex => {
+      const done = !!checks[ex.instanceId];
+      const clickAttr = isFuture ? '' : `onclick="toggleEx('${dkey}','${ex.instanceId}')"`;
+      html += `<div class="ex-item${done ? ' done' : ''}${isFuture ? ' readonly' : ''}" ${clickAttr}>
+        <div class="check-circle"><div class="checkmark"></div></div>
+        <div class="ex-main">
+          <div class="ex-name">${esc(ex.name)}</div>
+          <div class="ex-meta">
+            <span>${esc(ex.sets)}</span>
+            ${ex.tag === 'posture' ? '<span class="meta-chip posture">posture</span>' : ''}
+            ${!ex.builtIn ? '<span class="meta-chip added">added</span>' : ''}
+          </div>
+        </div>
+        ${!ex.builtIn ? `<button class="ex-remove" onclick="event.stopPropagation();removeExercise('${ex.instanceId}')" aria-label="Remove exercise">x</button>` : ''}
+      </div>`;
+    });
+    if(doneCount === visibleExercises.length) html += `<div class="complete-banner">Session complete</div>`;
+  }
+
+  html += `</div></div>${renderStretchPane()}</div>`;
+  html += renderAddModal(state);
+  return html;
+}
+
+function renderHistory(state,today){
+  let html = `<div class="history-screen">`;
+  let hasAny = false;
+
+  for(let week = 0; week >= -3; week--) {
+    const weekStart = ws(today,week);
+    const days = [];
+    for(let offset = 0; offset < 7; offset++) {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate()+offset);
+      if(date <= today) days.push(date);
+    }
+
+    const weekHasData = days.some(date => {
+      const dkey = dk(date);
+      return state.checks[dkey] || state.added[dkey];
+    });
+    if(!weekHasData && week < 0) continue;
+
+    hasAny = true;
+    const label = week === 0 ? 'This week' : week === -1 ? 'Last week' : `${Math.abs(week)} weeks ago`;
+    html += `<div class="week-block"><div class="wk-lbl">${label}</div>`;
+
+    days.forEach(date => {
+      const routineDay = ROUTINE[date.getDay()];
+      const exercises = getVisibleExercises(date,state);
+      const checks = getDayChecks(state,date);
+      const doneCount = exercises.filter(ex => checks[ex.instanceId]).length;
+      let badgeClass = 'badge-skipped';
+      let badgeText = 'Skipped';
+
+      if(routineDay.rest && exercises.length === 0) {
+        badgeClass = 'badge-rest';
+        badgeText = 'Rest';
+      } else if(exercises.length === 0) {
+        badgeClass = 'badge-empty';
+        badgeText = 'Empty';
+      } else if(doneCount === exercises.length) {
+        badgeClass = 'badge-full';
+        badgeText = 'Complete';
+      } else if(doneCount > 0) {
+        badgeClass = 'badge-partial';
+        badgeText = `${doneCount}/${exercises.length} done`;
+      }
+
+      html += `<div class="history-day">
+        <div class="history-day-head">
+          <div class="history-day-name">${routineDay.name} <span style="font-weight:400;color:var(--muted);font-size:11px">${MS[date.getMonth()]} ${date.getDate()}</span></div>
+          <div class="hbadge ${badgeClass}">${badgeText}</div>
+        </div>`;
+
+      if(exercises.length) {
+        html += `<div class="history-exes">${exercises.map(ex => `<div class="history-ex${checks[ex.instanceId] ? ' done' : ''}">${esc(ex.name)}</div>`).join('')}</div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  }
+
+  if(!hasAny) html += `<div class="empty-history">No history yet.<br>Complete your first session<br>to see it here.</div>`;
+  html += `</div><button class="reset-btn" onclick="resetWeek()">Reset this week</button>`;
+  return html;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const state = ls();
+  const dkey = dk(selDate);
+  const weekStart = ws(today,weekOff);
+  const weekLabel = weekOff === 0 ? 'This week' : weekOff === -1 ? 'Last week' : weekOff < 0 ? `${Math.abs(weekOff)} weeks ago` : 'Next week';
+
+  let html = `<div class="week-strip">
     <div class="week-nav">
       <div class="week-arrow" onclick="setWeekOff(${weekOff-1})">‹</div>
-      <div class="week-label-text">${wkLabel}</div>
+      <div class="week-label-text">${weekLabel}</div>
       <div class="week-arrow" onclick="setWeekOff(${weekOff+1})">›</div>
     </div>
     <div class="days-row">`;
 
-  for(let i=0;i<7;i++){
-    const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
-    const ddow=d.getDay();
-    const dday=ROUTINE[ddow];
-    const ddk=dk(d);
-    const isSel=ddk===dkey;
-    const isTod=ddk===dk(today);
-    const hasW=!dday.rest;
-    const ds=state[ddk]||{};
-    const exes=dday.exercises||[];
-    const allDone=hasW&&exes.length>0&&exes.every(e=>ds[e.id]);
-    h+=`<div class="day-pill${isSel?' active':''}${isTod?' is-today':''}${hasW?' has-workout':''}${allDone?' all-done':''}" onclick="setDay('${ddk}')">
-      <div class="dp-name">${DS[ddow]}</div>
-      <div class="dp-num">${d.getDate()}</div>
+  for(let index = 0; index < 7; index++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate()+index);
+    const dayKey = dk(date);
+    const exercises = getVisibleExercises(date,state);
+    const checks = getDayChecks(state,date);
+    const isSelected = dayKey === dkey;
+    const isToday = dayKey === dk(today);
+    const allDone = exercises.length > 0 && exercises.every(ex => checks[ex.instanceId]);
+
+    html += `<div class="day-pill${isSelected ? ' active' : ''}${isToday ? ' is-today' : ''}${exercises.length ? ' has-workout' : ''}${allDone ? ' all-done' : ''}" onclick="setDay('${dayKey}')">
+      <div class="dp-name">${DS[date.getDay()]}</div>
+      <div class="dp-num">${date.getDate()}</div>
       <div class="dp-dot"></div>
     </div>`;
   }
-  h+=`</div></div>`;
 
-  const exes=day.exercises||[];
-  const doneCount=exes.filter(e=>dayState[e.id]).length;
-  const pct=exes.length?Math.round(doneCount/exes.length*100):0;
-
-  h+=`<header>
-    <div class="header-row">
-      <div>
-        <div class="day-title${day.rest?' rest':''}">${day.name}</div>
-        <div class="date-sub">${MS[selDate.getMonth()]} ${selDate.getDate()}${isToday?' · Today':''}</div>
-      </div>
-      ${!day.rest&&exes.length?`<div class="progress-pill">${doneCount}/${exes.length}</div>`:''}
-    </div>
-    ${!day.rest&&exes.length?`<div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>`:''}
-  </header>`;
-
-  if(view==='workout'){
-    h+=`<div class="tabs">
-      <div class="tab${dayTab==='workout'?' active':''}" onclick="setDayTab('workout')">Workout</div>
-      <div class="tab${dayTab==='stretch'?' active-blue':''}" onclick="setDayTab('stretch')">Stretch</div>
-    </div>`;
-
-    if(dayTab==='workout'){
-      if(day.rest){
-        h+=`<div class="rest-screen"><div class="rest-icon">🛋️</div><div class="rest-title">Rest day</div><div class="rest-sub">Recovery is part of the programme.<br>Do your stretch routine tonight.</div></div>`;
-      } else {
-        h+=`<div class="exercises">`;
-        exes.forEach(ex=>{
-          const done=!!dayState[ex.id];
-          h+=`<div class="ex-item${done?' done':''}${isFuture?' readonly':''}" ${!isFuture?`onclick="toggleEx('${dkey}','${ex.id}')"`:''}> 
-            <div class="check-circle"><div class="checkmark"></div></div>
-            <div class="ex-info">
-              <div class="ex-name">${ex.name}</div>
-              <div class="ex-sets">${ex.sets}</div>
-            </div>
-            ${ex.tag==='posture'?`<div class="ex-tag">posture</div>`:''}
-          </div>`;
-        });
-        h+=`</div>`;
-        if(doneCount===exes.length&&exes.length>0) h+=`<div class="complete-banner">Session complete 🎯</div>`;
-      }
-    }
-
-    if(dayTab==='stretch'){
-      h+=`<div class="stretch-list">`;
-      STRETCH.forEach(s=>{
-        h+=`<div class="stretch-item">
-          <div class="stretch-num">${s.n}</div>
-          <div class="stretch-info">
-            <div class="stretch-name">${s.name}</div>
-            <div class="stretch-desc">${s.desc}</div>
-            <div class="stretch-duration">${s.dur}</div>
-            <div class="stretch-target">${s.target}</div>
-          </div>
-        </div>`;
-      });
-      h+=`</div>`;
-    }
-  }
-
-  if(view==='history'){
-    h+=`<div class="history-screen">`;
-    let hasAny=false;
-    for(let w=0;w>=-3;w--){
-      const ws2=ws(today,w);
-      const days=[];
-      for(let d=0;d<7;d++){const dd=new Date(ws2);dd.setDate(ws2.getDate()+d);if(dd<=today)days.push(dd);}
-      const wHas=days.some(dd=>state[dk(dd)]);
-      if(!wHas&&w<0)continue;
-      hasAny=true;
-      const lbl=w===0?'This week':w===-1?'Last week':`${Math.abs(w)} weeks ago`;
-      h+=`<div class="week-block"><div class="wk-lbl">${lbl}</div>`;
-      days.forEach(dd=>{
-        const ddow2=dd.getDay();
-        const dday2=ROUTINE[ddow2];
-        const ddk2=dk(dd);
-        if(dday2.rest){
-          h+=`<div class="history-day"><div class="history-day-head"><div class="history-day-name">${dday2.name} <span style="font-weight:400;color:var(--muted);font-size:11px">${MS[dd.getMonth()]} ${dd.getDate()}</span></div><div class="hbadge badge-rest">Rest</div></div></div>`;
-          return;
-        }
-        const exes2=dday2.exercises||[];
-        const ds2=state[ddk2]||{};
-        const dc2=exes2.filter(e=>ds2[e.id]).length;
-        let bc='badge-skipped',bt='Skipped';
-        if(dc2===exes2.length&&exes2.length>0){bc='badge-full';bt='Complete';}
-        else if(dc2>0){bc='badge-partial';bt=`${dc2}/${exes2.length} done`;}
-        h+=`<div class="history-day"><div class="history-day-head"><div class="history-day-name">${dday2.name} <span style="font-weight:400;color:var(--muted);font-size:11px">${MS[dd.getMonth()]} ${dd.getDate()}</span></div><div class="hbadge ${bc}">${bt}</div></div><div class="history-exes">${exes2.map(e=>`<div class="history-ex${ds2[e.id]?' done':''}">${e.name}</div>`).join('')}</div></div>`;
-      });
-      h+=`</div>`;
-    }
-    if(!hasAny)h+=`<div class="empty-history">No history yet.<br>Complete your first session<br>to see it here.</div>`;
-    h+=`</div><button class="reset-btn" onclick="resetWeek()">Reset this week</button>`;
-  }
-
-  h+=`<div class="bottom-nav">
-    <div class="nav-btn${view==='workout'?' active':''}" onclick="setView('workout')">Workout</div>
-    <div class="nav-btn${view==='history'?' active':''}" onclick="setView('history')">History</div>
+  html += `</div></div>`;
+  html += view === 'workout' ? renderWorkoutView(state,today) : renderHistory(state,today);
+  html += `<div class="bottom-nav">
+    <div class="nav-btn${view === 'workout' ? ' active' : ''}" onclick="setView('workout')">Workout</div>
+    <div class="nav-btn${view === 'history' ? ' active' : ''}" onclick="setView('history')">History</div>
   </div>`;
-
-  app.innerHTML=h;
-}
-
-function setView(v){view=v;render();}
-function setDayTab(t){dayTab=t;render();}
-function resetWeek(){
-  if(!confirm('Reset this week?'))return;
-  const s=ls();
-  const w=ws(new Date(),0);
-  for(let d=0;d<7;d++){const dd=new Date(w);dd.setDate(w.getDate()+d);delete s[dk(dd)];}
-  ss(s);render();
+  app.innerHTML = html;
 }
 
 render();
