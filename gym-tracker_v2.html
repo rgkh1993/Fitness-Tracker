@@ -493,6 +493,8 @@ const STRETCH = [
   {id:'stretch6',name:'Doorway pec stretch',desc:'Forearms on the doorframe, then lean through gently. Targets pec minor pulling shoulders forward.',dur:'3 x 30s',target:'Pec minor · kyphosis'},
   {id:'stretch7',name:'Figure 4 glute stretch',desc:'Lying on your back, cross ankle over the opposite knee and pull legs toward the chest.',dur:'60s each side',target:'Glutes · tight hips'},
 ];
+const DEFAULT_STRETCH_IDS = ['stretch1','stretch2','stretch3','stretch5','stretch6'];
+const DEFAULT_STRETCH_SET = new Set(DEFAULT_STRETCH_IDS);
 
 const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -513,6 +515,12 @@ function dk(d){
   const day = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
+function legacyUtcDayKey(d){ return d.toISOString().split('T')[0]; }
+function dayKeyCandidates(d){
+  const primary = dk(d);
+  const legacy = legacyUtcDayKey(d);
+  return primary === legacy ? [primary] : [primary, legacy];
+}
 function fromDayKey(dayKey){
   const [y,m,d] = dayKey.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -520,22 +528,23 @@ function fromDayKey(dayKey){
 function ws(d,o){ const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate()-start.getDay()+(o*7)); return start; }
 function esc(text){ return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-function newState(){ return { checks:{}, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{} }; }
+function newState(){ return { checks:{}, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{}, addedStretches:{} }; }
 function normalizedState(raw){
   if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return newState();
 
-  if(raw.checks || raw.added || raw.removed || raw.stretchChecks || raw.stretchRemoved){
+  if(raw.checks || raw.added || raw.removed || raw.stretchChecks || raw.stretchRemoved || raw.addedStretches){
     return {
       checks: raw.checks && typeof raw.checks === 'object' ? raw.checks : {},
       added: raw.added && typeof raw.added === 'object' ? raw.added : {},
       removed: raw.removed && typeof raw.removed === 'object' ? raw.removed : {},
       stretchChecks: raw.stretchChecks && typeof raw.stretchChecks === 'object' ? raw.stretchChecks : {},
       stretchRemoved: raw.stretchRemoved && typeof raw.stretchRemoved === 'object' ? raw.stretchRemoved : {},
+      addedStretches: raw.addedStretches && typeof raw.addedStretches === 'object' ? raw.addedStretches : {},
     };
   }
 
   // Legacy format: {dateKey:{exerciseId:boolean}}
-  return { checks: raw, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{} };
+  return { checks: raw, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{}, addedStretches:{} };
 }
 function ls(){
   try {
@@ -549,24 +558,51 @@ function ls(){
 function ss(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function ensureMap(obj,key){ if(!obj[key] || typeof obj[key] !== 'object' || Array.isArray(obj[key])) obj[key] = {}; return obj[key]; }
 function ensureList(obj,key){ if(!Array.isArray(obj[key])) obj[key] = []; return obj[key]; }
+function getDateMap(container,date){
+  for(const key of dayKeyCandidates(date)) {
+    const value = container[key];
+    if(value && typeof value === 'object' && !Array.isArray(value)) return value;
+  }
+  return {};
+}
+function getDateList(container,date){
+  for(const key of dayKeyCandidates(date)) {
+    const value = container[key];
+    if(Array.isArray(value)) return value;
+  }
+  return [];
+}
+function resolveWriteKey(container,date){
+  const primary = dk(date);
+  const legacy = legacyUtcDayKey(date);
+  if(primary !== legacy && container[legacy] !== undefined && container[primary] === undefined) {
+    container[primary] = container[legacy];
+    delete container[legacy];
+  }
+  return primary;
+}
 
 function getVisibleExercises(date,state){
-  const dkey = dk(date);
-  const removed = new Set(state.removed[dkey] || []);
+  const removed = new Set(getDateList(state.removed,date));
   const base = (ROUTINE[date.getDay()].exercises || [])
     .filter(ex => !removed.has(ex.id))
     .map(ex => ({ ...ex, instanceId: ex.id, builtIn: true }));
-  const added = (state.added[dkey] || [])
+  const added = getDateList(state.added,date)
     .filter(ex => !removed.has(ex.instanceId))
     .map(ex => ({ ...ex, builtIn: false }));
   return [...base, ...added];
 }
-function getDayChecks(state,date){ return state.checks[dk(date)] || {}; }
+function getDayChecks(state,date){ return getDateMap(state.checks,date); }
 function getVisibleStretches(date,state){
-  const removed = new Set(state.stretchRemoved[dk(date)] || []);
-  return STRETCH.filter(item => !removed.has(item.id));
+  const removed = new Set(getDateList(state.stretchRemoved,date));
+  const added = new Set(getDateList(state.addedStretches,date));
+  return STRETCH.filter(item => (DEFAULT_STRETCH_SET.has(item.id) || added.has(item.id)) && !removed.has(item.id));
 }
-function getStretchChecks(state,date){ return state.stretchChecks[dk(date)] || {}; }
+function getStretchChecks(state,date){ return getDateMap(state.stretchChecks,date); }
+function getStretchLibrary(date,state){
+  const visibleIds = new Set(getVisibleStretches(date,state).map(item => item.id));
+  return STRETCH.filter(item => !visibleIds.has(item.id));
+}
 
 function getExerciseLibrary(date,state){
   const currentDayIndex = date.getDay();
@@ -593,45 +629,67 @@ function getExerciseLibrary(date,state){
 
 function toggleEx(dkey,instanceId){
   const state = ls();
-  const checks = ensureMap(state.checks,dkey);
+  const date = fromDayKey(dkey);
+  const writeKey = resolveWriteKey(state.checks,date);
+  const checks = ensureMap(state.checks,writeKey);
   checks[instanceId] = !checks[instanceId];
   ss(state);
   render();
 }
 function removeExercise(instanceId){
   const state = ls();
-  const dkey = dk(selDate);
+  const dkey = resolveWriteKey(state.added,selDate);
   const visible = getVisibleExercises(selDate,state);
   const target = visible.find(item => item.instanceId === instanceId);
   if(!target) return;
 
   const added = ensureList(state.added,dkey);
   if(target.builtIn) {
-    const removed = ensureList(state.removed,dkey);
+    const removedKey = resolveWriteKey(state.removed,selDate);
+    const removed = ensureList(state.removed,removedKey);
     if(!removed.includes(instanceId)) removed.push(instanceId);
   } else {
     const nextAdded = added.filter(item => item.instanceId !== instanceId);
     state.added[dkey] = nextAdded;
   }
 
-  if(state.checks[dkey]) delete state.checks[dkey][instanceId];
+  const checksKey = resolveWriteKey(state.checks,selDate);
+  if(state.checks[checksKey]) delete state.checks[checksKey][instanceId];
   ss(state);
   render();
 }
 function removeStretch(stretchId){
   const state = ls();
-  const dkey = dk(selDate);
+  const dkey = resolveWriteKey(state.stretchRemoved,selDate);
   const removed = ensureList(state.stretchRemoved,dkey);
   if(!removed.includes(stretchId)) removed.push(stretchId);
-  if(state.stretchChecks[dkey]) delete state.stretchChecks[dkey][stretchId];
+  const checksKey = resolveWriteKey(state.stretchChecks,selDate);
+  if(state.stretchChecks[checksKey]) delete state.stretchChecks[checksKey][stretchId];
   ss(state);
   render();
 }
 function toggleStretchComplete(stretchId){
   const state = ls();
-  const dkey = dk(selDate);
+  const dkey = resolveWriteKey(state.stretchChecks,selDate);
   const checks = ensureMap(state.stretchChecks,dkey);
   checks[stretchId] = !checks[stretchId];
+  ss(state);
+  render();
+}
+function addStretch(stretchId){
+  const state = ls();
+  const dkey = resolveWriteKey(state.addedStretches,selDate);
+  if(!DEFAULT_STRETCH_SET.has(stretchId)) {
+    const added = ensureList(state.addedStretches,dkey);
+    if(!added.includes(stretchId)) added.push(stretchId);
+  }
+
+  const removedKey = resolveWriteKey(state.stretchRemoved,selDate);
+  if(Array.isArray(state.stretchRemoved[removedKey])) {
+    state.stretchRemoved[removedKey] = state.stretchRemoved[removedKey].filter(id => id !== stretchId);
+  }
+
+  addModalOpen = false;
   ss(state);
   render();
 }
@@ -640,7 +698,7 @@ function addExercise(libraryId){
   const libraryItem = getExerciseLibrary(selDate,state).find(item => item.libraryId === libraryId);
   if(!libraryItem) return;
 
-  const dkey = dk(selDate);
+  const dkey = resolveWriteKey(state.added,selDate);
   const added = ensureList(state.added,dkey);
   added.push({
     instanceId: `added_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
@@ -674,12 +732,14 @@ function resetWeek(){
   for(let offset = 0; offset < 7; offset++) {
     const date = new Date(weekStart);
     date.setDate(weekStart.getDate()+offset);
-    const dkey = dk(date);
-    delete state.checks[dkey];
-    delete state.added[dkey];
-    delete state.removed[dkey];
-    delete state.stretchChecks[dkey];
-    delete state.stretchRemoved[dkey];
+    dayKeyCandidates(date).forEach(key => {
+      delete state.checks[key];
+      delete state.added[key];
+      delete state.removed[key];
+      delete state.stretchChecks[key];
+      delete state.stretchRemoved[key];
+      delete state.addedStretches[key];
+    });
   }
   ss(state);
   render();
@@ -722,23 +782,27 @@ function renderStretchPane(state){
 }
 
 function renderAddModal(state){
-  const library = getExerciseLibrary(selDate,state);
+  const exerciseLibrary = getExerciseLibrary(selDate,state);
+  const stretchLibrary = getStretchLibrary(selDate,state);
   let html = `<div class="modal${addModalOpen ? ' show' : ''}" onclick="closeAddModal()">
     <div class="modal-sheet" onclick="event.stopPropagation()">
       <div class="modal-handle"></div>
       <div class="modal-head">
         <div>
-          <div class="modal-title">Add exercise</div>
-          <div class="modal-sub">Pick from the rest of the week. This adds the exercise only to ${ROUTINE[selDate.getDay()].name} (${MS[selDate.getMonth()]} ${selDate.getDate()}).</div>
+          <div class="modal-title">Add to day</div>
+          <div class="modal-sub">Add optional items only to ${ROUTINE[selDate.getDay()].name} (${MS[selDate.getMonth()]} ${selDate.getDate()}).</div>
         </div>
         <button class="modal-close" onclick="closeAddModal()" aria-label="Close">x</button>
       </div>`;
 
-  if(!library.length) {
-    html += `<div class="empty-picker">No more exercises available from other days of this week.</div>`;
-  } else {
+  if(!exerciseLibrary.length && !stretchLibrary.length) {
+    html += `<div class="empty-picker">No optional items available to add.</div>`;
+  }
+
+  if(exerciseLibrary.length) {
+    html += `<div class="section-label" style="padding:0 2px 8px">Exercises</div>`;
     html += `<div class="picker-list">`;
-    library.forEach(item => {
+    exerciseLibrary.forEach(item => {
       html += `<div class="picker-card">
         <div class="picker-top">
           <div>
@@ -748,6 +812,23 @@ function renderAddModal(state){
           <div class="picker-day">${esc(item.sourceDay)}</div>
         </div>
         <button class="picker-add" onclick="addExercise('${item.libraryId}')">Add to this day</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if(stretchLibrary.length) {
+    html += `<div class="section-label" style="padding:12px 2px 8px">Stretches</div>`;
+    html += `<div class="picker-list">`;
+    stretchLibrary.forEach(item => {
+      html += `<div class="picker-card">
+        <div class="picker-top">
+          <div>
+            <div class="picker-name">${esc(item.name)}</div>
+            <div class="picker-meta">${esc(item.dur)} · ${esc(item.target)}</div>
+          </div>
+        </div>
+        <button class="picker-add" onclick="addStretch('${item.id}')">Add stretch to this day</button>
       </div>`;
     });
     html += `</div>`;
