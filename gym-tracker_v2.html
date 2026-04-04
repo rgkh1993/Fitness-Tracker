@@ -475,6 +475,7 @@ const ROUTINE = {
     {id:'sat2',name:'DB deadlift',sets:'4 sets',tag:''},
     {id:'sat3',name:'Zone 2 cardio',sets:'40 min',tag:''},
     {id:'sat4',name:'Hanging leg raise',sets:'4 sets · pelvic tuck',tag:'posture'},
+    {id:'sat5',name:'Sauna',sets:'25 min',tag:''},
   ]},
   0:{name:'Sunday',exercises:[
     {id:'sun1',name:'Lat raise + uprise',sets:'4 sets',tag:''},
@@ -499,7 +500,7 @@ const DEFAULT_STRETCH_SET = new Set(DEFAULT_STRETCH_IDS);
 const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const STORAGE_KEY = 'gymState4';
-const LEGACY_KEY = 'gymState3';
+const LEGACY_KEYS = ['gymState3','gymState'];
 const WEEK_ORDER = [1,2,3,4,5,6,0];
 
 let selDate = new Date();
@@ -546,14 +547,110 @@ function normalizedState(raw){
   // Legacy format: {dateKey:{exerciseId:boolean}}
   return { checks: raw, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{}, addedStretches:{} };
 }
-function ls(){
+function normalizeClassicState(raw){
+  const state = newState();
+  if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return state;
+
+  Object.entries(raw).forEach(([dateKey, dayState]) => {
+    if(!dayState || typeof dayState !== 'object' || Array.isArray(dayState)) return;
+
+    if(dayState.completed && typeof dayState.completed === 'object' && !Array.isArray(dayState.completed)) {
+      state.checks[dateKey] = { ...dayState.completed };
+    }
+
+    if(Array.isArray(dayState.exercises) && dayState.exercises.length) {
+      state.added[dateKey] = dayState.exercises.map((exercise, index) => ({
+        instanceId: exercise.id || `legacy_added_${dateKey}_${index}`,
+        name: exercise.name || 'Exercise',
+        sets: exercise.sets || '',
+        tag: exercise.tag || '',
+      }));
+    }
+  });
+
+  return state;
+}
+function parseStoredState(storageKey, rawValue){
+  if(!rawValue) return null;
+
   try {
-    const next = localStorage.getItem(STORAGE_KEY);
-    if(next) return normalizedState(JSON.parse(next));
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if(legacy) return normalizedState(JSON.parse(legacy));
-  } catch (error) {}
-  return newState();
+    const parsed = JSON.parse(rawValue);
+    return storageKey === 'gymState' ? normalizeClassicState(parsed) : normalizedState(parsed);
+  } catch (error) {
+    return null;
+  }
+}
+function mergeEntryLists(currentList, incomingList){
+  const next = Array.isArray(currentList) ? [...currentList] : [];
+  if(!Array.isArray(incomingList) || !incomingList.length) return next;
+
+  const seen = new Set(next.map(item => {
+    if(item && typeof item === 'object') return `obj:${item.instanceId || item.id || JSON.stringify(item)}`;
+    return `primitive:${String(item)}`;
+  }));
+
+  incomingList.forEach(item => {
+    const key = item && typeof item === 'object'
+      ? `obj:${item.instanceId || item.id || JSON.stringify(item)}`
+      : `primitive:${String(item)}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    next.push(item);
+  });
+
+  return next;
+}
+function mergeDateObjectMaps(currentMap, incomingMap){
+  return {
+    ...(incomingMap && typeof incomingMap === 'object' && !Array.isArray(incomingMap) ? incomingMap : {}),
+    ...(currentMap && typeof currentMap === 'object' && !Array.isArray(currentMap) ? currentMap : {}),
+  };
+}
+function mergeStates(currentState, incomingState){
+  const merged = {
+    checks: { ...currentState.checks },
+    added: { ...currentState.added },
+    removed: { ...currentState.removed },
+    stretchChecks: { ...currentState.stretchChecks },
+    stretchRemoved: { ...currentState.stretchRemoved },
+    addedStretches: { ...currentState.addedStretches },
+  };
+
+  ['checks','stretchChecks'].forEach(container => {
+    Object.entries(incomingState[container] || {}).forEach(([dateKey, value]) => {
+      merged[container][dateKey] = mergeDateObjectMaps(merged[container][dateKey], value);
+    });
+  });
+
+  ['added','removed','stretchRemoved','addedStretches'].forEach(container => {
+    Object.entries(incomingState[container] || {}).forEach(([dateKey, value]) => {
+      merged[container][dateKey] = mergeEntryLists(merged[container][dateKey], value);
+    });
+  });
+
+  return merged;
+}
+function ls(){
+  let state = newState();
+
+  try {
+    const currentState = parseStoredState(STORAGE_KEY, localStorage.getItem(STORAGE_KEY));
+    if(currentState) state = mergeStates(state, currentState);
+
+    let migratedLegacyState = false;
+    LEGACY_KEYS.forEach(storageKey => {
+      const legacyState = parseStoredState(storageKey, localStorage.getItem(storageKey));
+      if(!legacyState) return;
+      state = mergeStates(state, legacyState);
+      migratedLegacyState = true;
+    });
+
+    if(migratedLegacyState) ss(state);
+  } catch (error) {
+    return state;
+  }
+
+  return state;
 }
 function ss(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function ensureMap(obj,key){ if(!obj[key] || typeof obj[key] !== 'object' || Array.isArray(obj[key])) obj[key] = {}; return obj[key]; }
@@ -571,6 +668,23 @@ function getDateList(container,date){
     if(Array.isArray(value)) return value;
   }
   return [];
+}
+function hasDateData(state,date){
+  return dayKeyCandidates(date).some(key => {
+    const checks = state.checks[key];
+    const added = state.added[key];
+    const removed = state.removed[key];
+    const stretchChecks = state.stretchChecks[key];
+    const stretchRemoved = state.stretchRemoved[key];
+    const addedStretches = state.addedStretches[key];
+
+    return (checks && Object.keys(checks).length)
+      || (Array.isArray(added) && added.length)
+      || (Array.isArray(removed) && removed.length)
+      || (stretchChecks && Object.keys(stretchChecks).length)
+      || (Array.isArray(stretchRemoved) && stretchRemoved.length)
+      || (Array.isArray(addedStretches) && addedStretches.length);
+  });
 }
 function resolveWriteKey(container,date){
   const primary = dk(date);
@@ -904,10 +1018,7 @@ function renderHistory(state,today){
       if(date <= today) days.push(date);
     }
 
-    const weekHasData = days.some(date => {
-      const dkey = dk(date);
-      return state.checks[dkey] || state.added[dkey];
-    });
+    const weekHasData = days.some(date => hasDateData(state,date));
     if(!weekHasData && week < 0) continue;
 
     hasAny = true;
