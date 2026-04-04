@@ -526,7 +526,13 @@ function fromDayKey(dayKey){
   const [y,m,d] = dayKey.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
-function ws(d,o){ const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate()-start.getDay()+(o*7)); return start; }
+function ws(d,o){
+  const start = new Date(d);
+  start.setHours(0,0,0,0);
+  const dayOffset = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - dayOffset + (o * 7));
+  return start;
+}
 function esc(text){ return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function newState(){ return { checks:{}, added:{}, removed:{}, stretchChecks:{}, stretchRemoved:{}, addedStretches:{} }; }
@@ -829,7 +835,6 @@ function setWeekOff(offset){
   weekOff = offset;
   const weekStart = ws(new Date(),offset);
   selDate = new Date(weekStart);
-  selDate.setDate(weekStart.getDate()+1);
   selDate.setHours(0,0,0,0);
   openStretchInfoId = null;
   render();
