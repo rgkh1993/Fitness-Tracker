@@ -475,7 +475,6 @@ const ROUTINE = {
     {id:'sat2',name:'DB deadlift',sets:'4 sets',tag:''},
     {id:'sat3',name:'Zone 2 cardio',sets:'40 min',tag:''},
     {id:'sat4',name:'Hanging leg raise',sets:'4 sets · pelvic tuck',tag:'posture'},
-    {id:'sat5',name:'Sauna',sets:'25 min',tag:''},
   ]},
   0:{name:'Sunday',exercises:[
     {id:'sun1',name:'Lat raise + uprise',sets:'4 sets',tag:''},
@@ -597,4 +596,468 @@ function getDayChecks(state,date){ return getDateMap(state.checks,date); }
 function getVisibleStretches(date,state){
   const removed = new Set(getDateList(state.stretchRemoved,date));
   const added = new Set(getDateList(state.addedStretches,date));
-  return STRETCH.filter(item => (DEFAULT_ST
+  return STRETCH.filter(item => (DEFAULT_STRETCH_SET.has(item.id) || added.has(item.id)) && !removed.has(item.id));
+}
+function getStretchChecks(state,date){ return getDateMap(state.stretchChecks,date); }
+function getStretchLibrary(date,state){
+  const visibleIds = new Set(getVisibleStretches(date,state).map(item => item.id));
+  return STRETCH.filter(item => !visibleIds.has(item.id));
+}
+
+function getExerciseLibrary(date,state){
+  const currentDayIndex = date.getDay();
+  const currentNames = new Set(getVisibleExercises(date,state).map(ex => `${ex.name}__${ex.sets}`));
+  const library = [];
+
+  WEEK_ORDER.forEach(dayIndex => {
+    if(dayIndex === currentDayIndex) return;
+    (ROUTINE[dayIndex].exercises || []).forEach(ex => {
+      const key = `${ex.name}__${ex.sets}`;
+      if(currentNames.has(key)) return;
+      library.push({
+        libraryId: `lib_${ex.id}_${dayIndex}`,
+        sourceDay: ROUTINE[dayIndex].name,
+        name: ex.name,
+        sets: ex.sets,
+        tag: ex.tag || '',
+      });
+    });
+  });
+
+  return library;
+}
+
+function toggleEx(dkey,instanceId){
+  const state = ls();
+  const date = fromDayKey(dkey);
+  const writeKey = resolveWriteKey(state.checks,date);
+  const checks = ensureMap(state.checks,writeKey);
+  checks[instanceId] = !checks[instanceId];
+  ss(state);
+  render();
+}
+function removeExercise(instanceId){
+  const state = ls();
+  const dkey = resolveWriteKey(state.added,selDate);
+  const visible = getVisibleExercises(selDate,state);
+  const target = visible.find(item => item.instanceId === instanceId);
+  if(!target) return;
+
+  const added = ensureList(state.added,dkey);
+  if(target.builtIn) {
+    const removedKey = resolveWriteKey(state.removed,selDate);
+    const removed = ensureList(state.removed,removedKey);
+    if(!removed.includes(instanceId)) removed.push(instanceId);
+  } else {
+    const nextAdded = added.filter(item => item.instanceId !== instanceId);
+    state.added[dkey] = nextAdded;
+  }
+
+  const checksKey = resolveWriteKey(state.checks,selDate);
+  if(state.checks[checksKey]) delete state.checks[checksKey][instanceId];
+  ss(state);
+  render();
+}
+function removeStretch(stretchId){
+  const state = ls();
+  const dkey = resolveWriteKey(state.stretchRemoved,selDate);
+  const removed = ensureList(state.stretchRemoved,dkey);
+  if(!removed.includes(stretchId)) removed.push(stretchId);
+  const checksKey = resolveWriteKey(state.stretchChecks,selDate);
+  if(state.stretchChecks[checksKey]) delete state.stretchChecks[checksKey][stretchId];
+  ss(state);
+  render();
+}
+function toggleStretchComplete(stretchId){
+  const state = ls();
+  const dkey = resolveWriteKey(state.stretchChecks,selDate);
+  const checks = ensureMap(state.stretchChecks,dkey);
+  checks[stretchId] = !checks[stretchId];
+  ss(state);
+  render();
+}
+function addStretch(stretchId){
+  const state = ls();
+  const dkey = resolveWriteKey(state.addedStretches,selDate);
+  if(!DEFAULT_STRETCH_SET.has(stretchId)) {
+    const added = ensureList(state.addedStretches,dkey);
+    if(!added.includes(stretchId)) added.push(stretchId);
+  }
+
+  const removedKey = resolveWriteKey(state.stretchRemoved,selDate);
+  if(Array.isArray(state.stretchRemoved[removedKey])) {
+    state.stretchRemoved[removedKey] = state.stretchRemoved[removedKey].filter(id => id !== stretchId);
+  }
+
+  addModalOpen = false;
+  ss(state);
+  render();
+}
+function addExercise(libraryId){
+  const state = ls();
+  const libraryItem = getExerciseLibrary(selDate,state).find(item => item.libraryId === libraryId);
+  if(!libraryItem) return;
+
+  const dkey = resolveWriteKey(state.added,selDate);
+  const added = ensureList(state.added,dkey);
+  added.push({
+    instanceId: `added_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+    name: libraryItem.name,
+    sets: libraryItem.sets,
+    tag: libraryItem.tag,
+  });
+  ss(state);
+  addModalOpen = false;
+  render();
+}
+function setDay(dateStr){ selDate = fromDayKey(dateStr); selDate.setHours(0,0,0,0); openStretchInfoId = null; render(); }
+function setWeekOff(offset){
+  weekOff = offset;
+  const weekStart = ws(new Date(),offset);
+  selDate = new Date(weekStart);
+  selDate.setDate(weekStart.getDate()+1);
+  selDate.setHours(0,0,0,0);
+  openStretchInfoId = null;
+  render();
+}
+function openAddModal(){ addModalOpen = true; render(); }
+function closeAddModal(){ addModalOpen = false; render(); }
+function toggleStretchInfo(id){ openStretchInfoId = openStretchInfoId === id ? null : id; render(); }
+function setView(next){ view = next; if(next !== 'workout') addModalOpen = false; render(); }
+
+function resetWeek(){
+  if(!confirm('Reset this week?')) return;
+  const state = ls();
+  const weekStart = ws(new Date(),0);
+  for(let offset = 0; offset < 7; offset++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate()+offset);
+    dayKeyCandidates(date).forEach(key => {
+      delete state.checks[key];
+      delete state.added[key];
+      delete state.removed[key];
+      delete state.stretchChecks[key];
+      delete state.stretchRemoved[key];
+      delete state.addedStretches[key];
+    });
+  }
+  ss(state);
+  render();
+}
+
+function renderStretchPane(state){
+  const visibleStretches = getVisibleStretches(selDate,state);
+  const stretchChecks = getStretchChecks(state,selDate);
+
+  let html = `<div class="stretch-pane">
+    <div class="stretch-head">
+      <div>
+        <div class="stretch-title">Stretch</div>
+        <div class="stretch-sub"></div>
+      </div>
+    </div>
+    <div class="stretch-grid">`;
+
+  if(!visibleStretches.length) {
+    html += `<div class="empty-day-note" style="grid-column:1/-1">No stretches left on this day.</div>`;
+  }
+
+  visibleStretches.forEach(item => {
+    const isOpen = openStretchInfoId === item.id;
+    const isDone = !!stretchChecks[item.id];
+    html += `<div class="stretch-tile swipe-remove${isDone ? ' done' : ''}" data-kind="stretch" data-id="${item.id}">
+      <div class="stretch-top">
+        <div class="stretch-name${isDone ? ' done' : ''}">${esc(item.name)}</div>
+        <div class="stretch-actions">
+          <button class="stretch-check-btn${isDone ? ' done' : ''}" onclick="event.stopPropagation();toggleStretchComplete('${item.id}')" aria-label="Mark stretch complete">✓</button>
+          <button class="stretch-info-btn" onclick="event.stopPropagation();toggleStretchInfo('${item.id}')" aria-label="Stretch info">i</button>
+        </div>
+      </div>
+      ${isOpen ? `<div class="stretch-tooltip">${esc(item.desc)}<div class="stretch-tooltip-meta">${esc(item.dur)} · ${esc(item.target)}</div></div>` : ''}
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderAddModal(state){
+  const exerciseLibrary = getExerciseLibrary(selDate,state);
+  const stretchLibrary = getStretchLibrary(selDate,state);
+  let html = `<div class="modal${addModalOpen ? ' show' : ''}" onclick="closeAddModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Add to day</div>
+          <div class="modal-sub">Add optional items only to ${ROUTINE[selDate.getDay()].name} (${MS[selDate.getMonth()]} ${selDate.getDate()}).</div>
+        </div>
+        <button class="modal-close" onclick="closeAddModal()" aria-label="Close">x</button>
+      </div>`;
+
+  if(!exerciseLibrary.length && !stretchLibrary.length) {
+    html += `<div class="empty-picker">No optional items available to add.</div>`;
+  }
+
+  if(exerciseLibrary.length) {
+    html += `<div class="section-label" style="padding:0 2px 8px">Exercises</div>`;
+    html += `<div class="picker-list">`;
+    exerciseLibrary.forEach(item => {
+      html += `<div class="picker-card">
+        <div class="picker-top">
+          <div>
+            <div class="picker-name">${esc(item.name)}</div>
+            <div class="picker-meta">${esc(item.sets)}${item.tag === 'posture' ? ' · posture' : ''}</div>
+          </div>
+          <div class="picker-day">${esc(item.sourceDay)}</div>
+        </div>
+        <button class="picker-add" onclick="addExercise('${item.libraryId}')">Add to this day</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if(stretchLibrary.length) {
+    html += `<div class="section-label" style="padding:12px 2px 8px">Stretches</div>`;
+    html += `<div class="picker-list">`;
+    stretchLibrary.forEach(item => {
+      html += `<div class="picker-card">
+        <div class="picker-top">
+          <div>
+            <div class="picker-name">${esc(item.name)}</div>
+            <div class="picker-meta">${esc(item.dur)} · ${esc(item.target)}</div>
+          </div>
+        </div>
+        <button class="picker-add" onclick="addStretch('${item.id}')">Add stretch to this day</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderWorkoutView(state,today){
+  const day = ROUTINE[selDate.getDay()];
+  const dkey = dk(selDate);
+  const visibleExercises = getVisibleExercises(selDate,state);
+  const checks = getDayChecks(state,selDate);
+  const isFuture = selDate > today;
+  const doneCount = visibleExercises.filter(ex => checks[ex.instanceId]).length;
+  const pct = visibleExercises.length ? Math.round(doneCount / visibleExercises.length * 100) : 0;
+
+  let html = `<header>
+    <div class="header-row">
+      <div class="header-copy">
+        <div class="day-title${day.rest && visibleExercises.length === 0 ? ' rest' : ''}">${day.name}</div>
+        <div class="date-sub">${MS[selDate.getMonth()]} ${selDate.getDate()}${dkey === dk(today) ? ' · Today' : ''}</div>
+      </div>
+      <div class="header-actions">
+        ${visibleExercises.length ? `<div class="progress-pill">${doneCount}/${visibleExercises.length}</div>` : ''}
+        <button class="add-btn" onclick="openAddModal()" aria-label="Add exercise">+</button>
+      </div>
+    </div>
+    <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+  </header>`;
+
+  html += `<div class="day-layout"><div class="exercise-pane"><div class="section-label">Exercises</div><div class="exercise-list">`;
+
+  if(day.rest && visibleExercises.length === 0) {
+    html += `<div class="rest-screen"><div class="rest-title">Rest day</div><div class="rest-sub">Recovery still counts. Keep stretch in the bottom block and add an exercise only if you actually did it.</div></div>`;
+  } else if(visibleExercises.length === 0) {
+    html += `<div class="empty-day-note">Nothing scheduled on this date right now.<br>Use + to add from the rest of your week.</div>`;
+  } else {
+    visibleExercises.forEach(ex => {
+      const done = !!checks[ex.instanceId];
+      const clickAttr = isFuture ? '' : `onclick="toggleEx('${dkey}','${ex.instanceId}')"`;
+      html += `<div class="ex-item swipe-remove${done ? ' done' : ''}${isFuture ? ' readonly' : ''}" data-kind="exercise" data-id="${ex.instanceId}" ${clickAttr}>
+        <div class="check-circle"><div class="checkmark"></div></div>
+        <div class="ex-main">
+          <div class="ex-name">${esc(ex.name)}</div>
+          <div class="ex-meta">
+            <span>${esc(ex.sets)}</span>
+            ${ex.tag === 'posture' ? '<span class="meta-chip posture">posture</span>' : ''}
+            ${!ex.builtIn ? '<span class="meta-chip added">added</span>' : ''}
+          </div>
+        </div>
+      </div>`;
+    });
+    if(doneCount === visibleExercises.length) html += `<div class="complete-banner">Session complete</div>`;
+  }
+
+  html += `</div></div>${renderStretchPane(state)}</div>`;
+  html += renderAddModal(state);
+  return html;
+}
+
+function renderHistory(state,today){
+  let html = `<div class="history-screen">`;
+  let hasAny = false;
+
+  for(let week = 0; week >= -3; week--) {
+    const weekStart = ws(today,week);
+    const days = [];
+    for(let offset = 0; offset < 7; offset++) {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate()+offset);
+      if(date <= today) days.push(date);
+    }
+
+    const weekHasData = days.some(date => {
+      const dkey = dk(date);
+      return state.checks[dkey] || state.added[dkey];
+    });
+    if(!weekHasData && week < 0) continue;
+
+    hasAny = true;
+    const label = week === 0 ? 'This week' : week === -1 ? 'Last week' : `${Math.abs(week)} weeks ago`;
+    html += `<div class="week-block"><div class="wk-lbl">${label}</div>`;
+
+    days.forEach(date => {
+      const routineDay = ROUTINE[date.getDay()];
+      const exercises = getVisibleExercises(date,state);
+      const checks = getDayChecks(state,date);
+      const doneCount = exercises.filter(ex => checks[ex.instanceId]).length;
+      let badgeClass = 'badge-skipped';
+      let badgeText = 'Skipped';
+
+      if(routineDay.rest && exercises.length === 0) {
+        badgeClass = 'badge-rest';
+        badgeText = 'Rest';
+      } else if(exercises.length === 0) {
+        badgeClass = 'badge-empty';
+        badgeText = 'Empty';
+      } else if(doneCount === exercises.length) {
+        badgeClass = 'badge-full';
+        badgeText = 'Complete';
+      } else if(doneCount > 0) {
+        badgeClass = 'badge-partial';
+        badgeText = `${doneCount}/${exercises.length} done`;
+      }
+
+      html += `<div class="history-day">
+        <div class="history-day-head">
+          <div class="history-day-name">${routineDay.name} <span style="font-weight:400;color:var(--muted);font-size:11px">${MS[date.getMonth()]} ${date.getDate()}</span></div>
+          <div class="hbadge ${badgeClass}">${badgeText}</div>
+        </div>`;
+
+      if(exercises.length) {
+        html += `<div class="history-exes">${exercises.map(ex => `<div class="history-ex${checks[ex.instanceId] ? ' done' : ''}">${esc(ex.name)}</div>`).join('')}</div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  }
+
+  if(!hasAny) html += `<div class="empty-history">No history yet.<br>Complete your first session<br>to see it here.</div>`;
+  html += `</div><button class="reset-btn" onclick="resetWeek()">Reset this week</button>`;
+  return html;
+}
+
+function attachSwipeHandlers(){
+  const items = document.querySelectorAll('.swipe-remove');
+  items.forEach(item => {
+    let startX = 0;
+    let deltaX = 0;
+    let activePointer = null;
+    let swiped = false;
+
+    item.addEventListener('pointerdown', event => {
+      if(event.button !== 0) return;
+      if(event.target.closest('button')) return;
+      activePointer = event.pointerId;
+      startX = event.clientX;
+      deltaX = 0;
+      swiped = false;
+      item.style.transition = 'none';
+      item.setPointerCapture(activePointer);
+    });
+
+    item.addEventListener('pointermove', event => {
+      if(activePointer !== event.pointerId) return;
+      const raw = event.clientX - startX;
+      deltaX = Math.min(0, Math.max(raw, -100));
+      if(Math.abs(deltaX) > 8) swiped = true;
+      if(deltaX < 0) item.style.transform = `translateX(${deltaX}px)`;
+    });
+
+    const endSwipe = event => {
+      if(activePointer !== event.pointerId) return;
+      item.releasePointerCapture(activePointer);
+      activePointer = null;
+      item.style.transition = 'transform 0.18s ease';
+
+      if(deltaX <= -60) {
+        const kind = item.dataset.kind;
+        const id = item.dataset.id;
+        if(kind === 'exercise') removeExercise(id);
+        if(kind === 'stretch') removeStretch(id);
+        return;
+      }
+
+      item.style.transform = '';
+      deltaX = 0;
+    };
+
+    item.addEventListener('pointerup', endSwipe);
+    item.addEventListener('pointercancel', endSwipe);
+    item.addEventListener('click', event => {
+      if(!swiped) return;
+      event.preventDefault();
+      event.stopPropagation();
+      swiped = false;
+    }, true);
+  });
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const state = ls();
+  const dkey = dk(selDate);
+  const weekStart = ws(today,weekOff);
+  const weekLabel = weekOff === 0 ? 'This week' : weekOff === -1 ? 'Last week' : weekOff < 0 ? `${Math.abs(weekOff)} weeks ago` : 'Next week';
+
+  let html = `<div class="week-strip">
+    <div class="week-nav">
+      <div class="week-arrow" onclick="setWeekOff(${weekOff-1})">‹</div>
+      <div class="week-label-text">${weekLabel}</div>
+      <div class="week-arrow" onclick="setWeekOff(${weekOff+1})">›</div>
+    </div>
+    <div class="days-row">`;
+
+  for(let index = 0; index < 7; index++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate()+index);
+    const dayKey = dk(date);
+    const exercises = getVisibleExercises(date,state);
+    const checks = getDayChecks(state,date);
+    const isSelected = dayKey === dkey;
+    const isToday = dayKey === dk(today);
+    const allDone = exercises.length > 0 && exercises.every(ex => checks[ex.instanceId]);
+
+    html += `<div class="day-pill${isSelected ? ' active' : ''}${isToday ? ' is-today' : ''}${exercises.length ? ' has-workout' : ''}${allDone ? ' all-done' : ''}" onclick="setDay('${dayKey}')">
+      <div class="dp-name">${DS[date.getDay()]}</div>
+      <div class="dp-num">${date.getDate()}</div>
+      <div class="dp-dot"></div>
+    </div>`;
+  }
+
+  html += `</div></div>`;
+  html += view === 'workout' ? renderWorkoutView(state,today) : renderHistory(state,today);
+  html += `<div class="bottom-nav">
+    <div class="nav-btn${view === 'workout' ? ' active' : ''}" onclick="setView('workout')">Workout</div>
+    <div class="nav-btn${view === 'history' ? ' active' : ''}" onclick="setView('history')">History</div>
+  </div>`;
+  app.innerHTML = html;
+  if(view === 'workout') attachSwipeHandlers();
+}
+
+render();
+</script>
+</body>
+</html>
