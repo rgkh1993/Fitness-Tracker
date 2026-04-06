@@ -298,6 +298,21 @@ header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
   cursor:pointer;
 }
 .stretch-check-btn.done { background:var(--accent); color:#0e0e0e; border-color:var(--accent); }
+.stretch-timer-btn {
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:0.5px solid #4a5a3a;
+  background:rgba(200,240,96,0.12);
+  color:var(--accent);
+  font-size:10px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  flex-shrink:0;
+}
 .stretch-info-btn {
   width:18px;
   height:18px;
@@ -324,6 +339,53 @@ header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
   padding:8px;
 }
 .stretch-tooltip-meta { color:var(--blue); margin-top:6px; font-size:10px; }
+.timer-modal {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.82);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:101;
+}
+.timer-modal.show { display:flex; }
+.timer-card {
+  background:#151515;
+  border:0.5px solid var(--border);
+  border-radius:20px;
+  padding:32px;
+  max-width:300px;
+  text-align:center;
+  box-shadow:var(--shadow);
+}
+.timer-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:16px; }
+.timer-display {
+  font-size:56px;
+  font-weight:700;
+  color:var(--accent);
+  font-family:'Monaco','Menlo','Courier New',monospace;
+  margin:16px 0;
+  letter-spacing:2px;
+}
+.timer-controls { display:flex; gap:8px; margin-top:24px; justify-content:center; }
+.timer-btn {
+  padding:10px 16px;
+  border-radius:10px;
+  border:0.5px solid var(--border);
+  background:var(--surface);
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.timer-btn:active { opacity:0.7; }
+.timer-btn.primary {
+  background:var(--accent);
+  color:#0e0e0e;
+  border-color:var(--accent);
+}
+.timer-btn.cancel { color:var(--danger); border-color:var(--danger); }
 .history-screen { flex:1; padding:12px 16px 0; overflow-y:auto; }
 .week-block { margin-bottom:20px; }
 .wk-lbl { font-size:11px; font-weight:600; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
@@ -499,6 +561,31 @@ const DEFAULT_STRETCH_SET = new Set(DEFAULT_STRETCH_IDS);
 
 const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function parseDuration(durStr) {
+  if(!durStr || typeof durStr !== 'string') return null;
+  const str = durStr.toLowerCase().trim();
+  
+  // Match "X min" or "Xmin"
+  let match = str.match(/(\d+)\s*min/);
+  if(match) return parseInt(match[1]) * 60;
+  
+  // Match "Xs" or "X sec"
+  match = str.match(/(\d+)\s*(?:sec|s)/);
+  if(match) return parseInt(match[1]);
+  
+  // Match "X x Y sec" (e.g., "3 x 30s") - multiply them
+  match = str.match(/(\d+)\s*x\s*(\d+)\s*(?:sec|s)/);
+  if(match) return parseInt(match[1]) * parseInt(match[2]);
+  
+  return null;
+}
+
+function formatSeconds(secs) {
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${mins}:${String(s).padStart(2,'0')}`;
+}
 const STORAGE_KEY = 'gymState4';
 const LEGACY_KEYS = ['gymState3','gymState'];
 const WEEK_ORDER = [1,2,3,4,5,6,0];
@@ -509,6 +596,11 @@ let weekOff = 0;
 let view = 'workout';
 let addModalOpen = false;
 let openStretchInfoId = null;
+let timerModalOpen = false;
+let timerStretchId = null;
+let timerSeconds = 0;
+let timerInterval = null;
+let timerActive = false;
 
 function dk(d){
   const y = d.getFullYear();
@@ -843,6 +935,41 @@ function openAddModal(){ addModalOpen = true; render(); }
 function closeAddModal(){ addModalOpen = false; render(); }
 function toggleStretchInfo(id){ openStretchInfoId = openStretchInfoId === id ? null : id; render(); }
 function setView(next){ view = next; if(next !== 'workout') addModalOpen = false; render(); }
+function openTimer(stretchId) {
+  const stretch = STRETCH.find(s => s.id === stretchId);
+  if(!stretch) return;
+  const secs = parseDuration(stretch.dur);
+  if(!secs) return;
+  timerStretchId = stretchId;
+  timerSeconds = secs;
+  timerActive = false;
+  timerModalOpen = true;
+  render();
+}
+function closeTimer() {
+  if(timerInterval) clearInterval(timerInterval);
+  timerActive = false;
+  timerModalOpen = false;
+  timerStretchId = null;
+  timerSeconds = 0;
+  render();
+}
+function startStopTimer() {
+  timerActive = !timerActive;
+  if(timerActive) {
+    timerInterval = setInterval(() => {
+      timerSeconds = Math.max(0, timerSeconds - 1);
+      if(timerSeconds === 0) {
+        timerActive = false;
+        clearInterval(timerInterval);
+      }
+      render();
+    }, 1000);
+  } else {
+    clearInterval(timerInterval);
+  }
+  render();
+}
 
 function resetWeek(){
   if(!confirm('Reset this week?')) return;
@@ -884,11 +1011,13 @@ function renderStretchPane(state){
   visibleStretches.forEach(item => {
     const isOpen = openStretchInfoId === item.id;
     const isDone = !!stretchChecks[item.id];
+    const hasTimer = parseDuration(item.dur) !== null;
     html += `<div class="stretch-tile swipe-remove${isDone ? ' done' : ''}" data-kind="stretch" data-id="${item.id}">
       <div class="stretch-top">
         <div class="stretch-name${isDone ? ' done' : ''}">${esc(item.name)}</div>
         <div class="stretch-actions">
           <button class="stretch-check-btn${isDone ? ' done' : ''}" onclick="event.stopPropagation();toggleStretchComplete('${item.id}')" aria-label="Mark stretch complete">✓</button>
+          ${hasTimer ? `<button class="stretch-timer-btn" onclick="event.stopPropagation();openTimer('${item.id}')" aria-label="Timer">⏱</button>` : ''}
           <button class="stretch-info-btn" onclick="event.stopPropagation();toggleStretchInfo('${item.id}')" aria-label="Stretch info">i</button>
         </div>
       </div>
@@ -1164,6 +1293,22 @@ function render(){
   }
 
   html += `</div></div>`;
+  
+  // Timer modal
+  if(timerModalOpen && timerStretchId) {
+    const stretch = STRETCH.find(s => s.id === timerStretchId);
+    html += `<div class="timer-modal show" onclick="closeTimer()">
+      <div class="timer-card" onclick="event.stopPropagation()">
+        <div class="timer-name">${stretch ? esc(stretch.name) : 'Timer'}</div>
+        <div class="timer-display">${formatSeconds(timerSeconds)}</div>
+        <div class="timer-controls">
+          <button class="timer-btn primary" onclick="startStopTimer()">${timerActive ? 'Pause' : 'Start'}</button>
+          <button class="timer-btn cancel" onclick="closeTimer()">Done</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  
   html += view === 'workout' ? renderWorkoutView(state,today) : renderHistory(state,today);
   html += `<div class="bottom-nav">
     <div class="nav-btn${view === 'workout' ? ' active' : ''}" onclick="setView('workout')">Workout</div>
