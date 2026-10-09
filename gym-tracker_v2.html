@@ -507,6 +507,10 @@ header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
   .header-actions { gap:6px; }
   .progress-pill { padding:5px 10px; }
 }
+
+.sync-pill { display:block; margin:4px auto calc(env(safe-area-inset-bottom, 0px) + 16px); padding:6px 12px; border-radius:999px; border:0.5px solid var(--border); background:var(--surface); color:var(--muted); font:500 11px/1.2 inherit; font-family:inherit; }
+.sync-pill.ok { color:var(--accent); border-color:var(--done-border); }
+.sync-pill.warn { color:var(--danger); border-color:var(--danger-dim); }
 </style>
 </head>
 <body>
@@ -752,7 +756,11 @@ function ls(){
 
   return state;
 }
-function ss(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function ss(state){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(SYNC_AT_KEY, new Date().toISOString());
+  scheduleSync();
+}
 function ensureMap(obj,key){ if(!obj[key] || typeof obj[key] !== 'object' || Array.isArray(obj[key])) obj[key] = {}; return obj[key]; }
 function ensureList(obj,key){ if(!Array.isArray(obj[key])) obj[key] = []; return obj[key]; }
 function getDateMap(container,date){
@@ -1320,7 +1328,111 @@ function render(){
   if(view === 'workout') attachSwipeHandlers();
 }
 
+// ---- Cloud backup -------------------------------------------------------
+// The whole state is backed up to Supabase (gym schema, see gym-sync.sql).
+// Newest save wins; the first sync on a phone merges phone + cloud so nothing
+// is dropped. The PIN is entered once per phone and kept in localStorage.
+const SYNC_URL = 'https://lasypudqtqxostkzujnu.supabase.co/rest/v1/rpc/';
+const SYNC_KEY = 'sb_publishable_FrTwtIX9JCd7V7S9ukvvHg_ZrBCk_pu';
+const SYNC_PIN_KEY = 'gymSyncPin';
+const SYNC_AT_KEY = 'gymStateUpdatedAt';
+const SYNC_LINKED_KEY = 'gymSyncLinked';
+let syncTimer = null;
+let syncing = false;
+let syncAgain = false;
+
+const syncPill = document.createElement('button');
+syncPill.className = 'sync-pill';
+syncPill.onclick = () => (localStorage.getItem(SYNC_PIN_KEY) ? syncNow() : askSyncPin());
+document.body.appendChild(syncPill);
+
+function setSyncStatus(text, tone){
+  syncPill.textContent = text;
+  syncPill.className = 'sync-pill' + (tone ? ' ' + tone : '');
+}
+
+async function syncCall(fn, body){
+  const res = await fetch(SYNC_URL + fn, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SYNC_KEY },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => null);
+  if(!res.ok) throw new Error((json && json.message) || 'offline');
+  return json;
+}
+
+function adoptRemote(remote){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedState(remote.data)));
+  localStorage.setItem(SYNC_AT_KEY, remote.updated_at);
+  render();
+}
+
+async function syncNow(){
+  const pin = localStorage.getItem(SYNC_PIN_KEY);
+  if(!pin) return setSyncStatus('Backup off · tap to turn on', 'warn');
+  if(syncing) { syncAgain = true; return; }
+  syncing = true;
+  setSyncStatus('Syncing…');
+  try {
+    const remote = await syncCall('gym_pull', { p_pin: pin });
+    const remoteHasData = remote.data && Object.keys(remote.data).length > 0;
+    if(!localStorage.getItem(SYNC_LINKED_KEY)) {
+      // First sync on this phone: keep everything from both sides.
+      const merged = remoteHasData ? mergeStates(ls(), normalizedState(remote.data)) : ls();
+      const at = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      localStorage.setItem(SYNC_AT_KEY, at);
+      const saved = await syncCall('gym_push', { p_pin: pin, p_data: merged, p_updated_at: at });
+      localStorage.setItem(SYNC_LINKED_KEY, '1');
+      if(saved.updated_at !== at) adoptRemote(saved); else render();
+    } else {
+      const localAt = Date.parse(localStorage.getItem(SYNC_AT_KEY) || 0);
+      const remoteAt = Date.parse(remote.updated_at);
+      if(remoteAt > localAt) adoptRemote(remote);
+      else if(localAt > remoteAt) {
+        const at = localStorage.getItem(SYNC_AT_KEY);
+        const saved = await syncCall('gym_push', { p_pin: pin, p_data: ls(), p_updated_at: at });
+        if(Date.parse(saved.updated_at) !== localAt) adoptRemote(saved);
+      }
+    }
+    setSyncStatus('Backed up ✓', 'ok');
+  } catch (error) {
+    if(error.message === 'bad_pin') {
+      localStorage.removeItem(SYNC_PIN_KEY);
+      setSyncStatus('Wrong PIN · tap to retry', 'warn');
+    } else if(error.message === 'locked') {
+      setSyncStatus('Too many tries · wait 15 min', 'warn');
+    } else {
+      setSyncStatus('Not backed up yet · will retry', 'warn');
+    }
+  } finally {
+    syncing = false;
+    if(syncAgain) { syncAgain = false; scheduleSync(); }
+  }
+}
+
+function scheduleSync(){
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 1500);
+}
+
+function askSyncPin(){
+  const pin = (prompt('Enter your PIN to back up your workouts to the cloud') || '').trim();
+  if(!pin) return;
+  localStorage.setItem(SYNC_PIN_KEY, pin);
+  syncNow();
+}
+
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') syncNow(); });
+window.addEventListener('online', syncNow);
 render();
+if(!localStorage.getItem(SYNC_PIN_KEY) && !localStorage.getItem('gymSyncAsked')) {
+  // Ask once; after that the button at the bottom turns backup on.
+  localStorage.setItem('gymSyncAsked', '1');
+  setTimeout(askSyncPin, 600);
+}
+syncNow();
 </script>
 </body>
 </html>
