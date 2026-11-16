@@ -231,6 +231,7 @@ header { padding:16px 20px 14px; border-bottom:0.5px solid var(--border); }
   font-size:10px;
   color:var(--muted);
 }
+.meta-chip.must-do { background:#ff6b6b15; color:#ff8a8a; border-color:#5a2424; display:inline-block; margin-top:4px; font-size:10px; }
 .meta-chip.posture { background:#c8f06015; color:#9bc14a; border-color:#324717; }
 .meta-chip.added { background:#1b2430; color:#9fc5ff; border-color:#2e4664; }
 .ex-remove {
@@ -522,10 +523,11 @@ const ROUTINE = {
     {id:'mon2',name:'Pull up',sets:'4 sets',tag:''},
     {id:'mon3',name:'Cable Y-raise',sets:'4 sets',tag:'posture'},
     {id:'mon4',name:'Tricep',sets:'4 sets',tag:''},
+    {id:'mon5',name:'Face pull',sets:'3 sets · superset w/ tricep',tag:'posture'},
   ]},
   2:{name:'Tuesday',rest:true},
   3:{name:'Wednesday',exercises:[
-    {id:'wed1',name:'Chest fly',sets:'4 sets',tag:''},
+    {id:'wed6',name:'Split squat',sets:'3 sets per leg',tag:''},
     {id:'wed2',name:'Cable Y-raise',sets:'4 sets',tag:'posture'},
     {id:'wed3',name:'Leg press / squat',sets:'4 sets',tag:''},
     {id:'wed4',name:'Romanian deadlift',sets:'4 sets',tag:'posture'},
@@ -538,6 +540,7 @@ const ROUTINE = {
     {id:'fri3',name:'Shoulder press',sets:'3 sets',tag:''},
     {id:'fri4',name:'Hip thrust',sets:'4 sets',tag:'posture'},
     {id:'fri5',name:'Tricep',sets:'3 sets',tag:''},
+    {id:'fri6',name:'Face pull',sets:'3 sets · superset w/ tricep',tag:'posture'},
   ]},
   6:{name:'Saturday',exercises:[
     {id:'sat1',name:'Dead hang',sets:'decompression',tag:'posture'},
@@ -556,15 +559,17 @@ const ROUTINE = {
 };
 
 const STRETCH = [
+  {id:'stretch2',name:'Thoracic extension over foam roller',desc:'Arch your back over the roller at 3 to 4 spots along your shoulder blades, 3 to 5 reps at each spot.',dur:'3–4 spots x 3–5 reps',target:'Thoracic · kyphosis'},
+  {id:'stretch5',name:'Chin tucks with head lift',desc:'Flat on the floor right after the roller. Tuck your chin, then lift your head slightly and hold. Keep the chin tucked throughout. Build holds from 10 sec to 20–30 sec.',dur:'10 x 10s holds',target:'Forward head · neck',mustDo:true},
+  {id:'stretch8',name:'Dead bugs',desc:'Lying on your back, arms and knees up. Extend the opposite arm and leg while keeping your lower back flat on the floor. Do as many reps per side as you can with your back flat, building to 10.',dur:'3 sets · build to 10/side',target:'Core · APT'},
+  {id:'stretch9',name:'Half-kneeling hip flexor stretch',desc:'One knee down, other foot forward. Tuck your pelvis and squeeze the glute of the down leg, then shift forward gently.',dur:'2 x 30s each side',target:'Hip flexors · APT',mustDo:true},
+  {id:'stretch6',name:'Doorway pec stretch',desc:'Forearms on the doorframe, then lean through gently. Targets pec minor pulling shoulders forward.',dur:'2 x 30s',target:'Pec minor · kyphosis'},
   {id:'stretch1',name:'Foam roller hip flexor release',desc:'Lie with foam roller under tailbone or sacrum. Let hips sink and relax fully. Breathe deeply.',dur:'2 min',target:'Hip flexors · APT'},
-  {id:'stretch2',name:'Thoracic extension over roller',desc:'Roller across mid-back around T4 to T8. Arms crossed or behind head. Extend over it slowly segment by segment.',dur:'2 min',target:'Thoracic · kyphosis'},
   {id:'stretch3',name:'Couch stretch',desc:'Rear foot up on sofa or wall, front foot forward. Keep torso upright and squeeze the glute of the back leg.',dur:'60s each side',target:'Hip flexors · tight hips'},
   {id:'stretch4',name:'90/90 hip stretch',desc:'Sit with both knees at 90 degrees, one in front and one to the side. Lean forward over the front shin.',dur:'60s each side',target:'Hip rotation'},
-  {id:'stretch5',name:'Chin tuck',desc:'Lying flat, draw chin straight back without tipping down. Hold 5 seconds, release, then repeat.',dur:'3 x 10 reps',target:'Forward head · neck'},
-  {id:'stretch6',name:'Doorway pec stretch',desc:'Forearms on the doorframe, then lean through gently. Targets pec minor pulling shoulders forward.',dur:'3 x 30s',target:'Pec minor · kyphosis'},
   {id:'stretch7',name:'Figure 4 glute stretch',desc:'Lying on your back, cross ankle over the opposite knee and pull legs toward the chest.',dur:'60s each side',target:'Glutes · tight hips'},
 ];
-const DEFAULT_STRETCH_IDS = ['stretch1','stretch2','stretch3','stretch5','stretch6'];
+const DEFAULT_STRETCH_IDS = ['stretch2','stretch5','stretch8','stretch9','stretch6'];
 const DEFAULT_STRETCH_SET = new Set(DEFAULT_STRETCH_IDS);
 
 const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -579,7 +584,7 @@ function parseDuration(durStr) {
   if(match) return parseInt(match[1]) * 60;
   
   // Match "Xs" or "X sec"
-  match = str.match(/(\d+)\s*(?:sec|s)/);
+  match = str.match(/(\d+)\s*(?:sec|s)\b/);
   if(match) return parseInt(match[1]);
   
   // Match "X x Y sec" (e.g., "3 x 30s") - multiply them
@@ -1026,7 +1031,7 @@ function renderStretchPane(state){
     const hasTimer = parseDuration(item.dur) !== null;
     html += `<div class="stretch-tile swipe-remove${isDone ? ' done' : ''}" data-kind="stretch" data-id="${item.id}">
       <div class="stretch-top">
-        <div class="stretch-name${isDone ? ' done' : ''}">${esc(item.name)}</div>
+        <div class="stretch-name${isDone ? ' done' : ''}">${esc(item.name)}${item.mustDo ? '<div><span class="meta-chip must-do">must-do</span></div>' : ''}</div>
         <div class="stretch-actions">
           <button class="stretch-check-btn${isDone ? ' done' : ''}" onclick="event.stopPropagation();toggleStretchComplete('${item.id}')" aria-label="Mark stretch complete">✓</button>
           ${hasTimer ? `<button class="stretch-timer-btn" onclick="event.stopPropagation();openTimer('${item.id}')" aria-label="Timer">⏱</button>` : ''}
